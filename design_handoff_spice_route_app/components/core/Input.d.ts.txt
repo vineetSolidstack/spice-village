@@ -1,0 +1,9 @@
+/** Text input with label, hint, error, optional leading icon. */
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  hint?: string;
+  /** Error message; also switches border to danger */
+  error?: string;
+  icon?: React.ReactNode;
+  style?: React.CSSProperties;
+}

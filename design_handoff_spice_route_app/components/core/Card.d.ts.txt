@@ -1,0 +1,9 @@
+/** Content card, optional cover image. */
+export interface CardProps {
+  /** Image URL or CSS gradient; omit for text-only card */
+  image?: string;
+  imageHeight?: number;
+  onClick?: () => void;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

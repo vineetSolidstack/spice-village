@@ -1,0 +1,14 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": ["App.tsx", "index.ts", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": [
+    "node_modules",
+    // Build output from `expo export`.
+    "dist",
+    // Design references, not app source — loose .jsx prototypes.
+    "design_handoff_spice_route_app"
+  ]
+}

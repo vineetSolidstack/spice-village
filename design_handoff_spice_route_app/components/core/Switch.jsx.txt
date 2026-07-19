@@ -1,0 +1,8 @@
+export function Switch({checked,onChange,label,style}){
+  return <label style={{display:'inline-flex',alignItems:'center',gap:10,cursor:'pointer',fontFamily:'var(--font-body)',...style}}>
+    <span onClick={()=>onChange&&onChange(!checked)} style={{width:44,height:26,borderRadius:999,background:checked?'var(--action-primary)':'var(--cream-300)',position:'relative',transition:'background var(--dur-base) var(--ease-out)',flexShrink:0}}>
+      <span style={{position:'absolute',top:3,left:checked?21:3,width:20,height:20,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 3px rgba(43,29,18,.25)',transition:'left var(--dur-base) var(--ease-out)'}}></span>
+    </span>
+    {label&&<span style={{fontWeight:600,fontSize:14}}>{label}</span>}
+  </label>;
+}

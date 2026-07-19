@@ -1,0 +1,12 @@
+export function Badge({tone='brand',children,style}){
+  const t={
+    brand:{bg:'var(--surface-brand-soft)',fg:'var(--text-brand)'},
+    accent:{bg:'var(--turmeric-100)',fg:'var(--turmeric-600)'},
+    success:{bg:'var(--status-success-bg)',fg:'var(--status-success)'},
+    danger:{bg:'var(--status-danger-bg)',fg:'var(--status-danger)'},
+    info:{bg:'var(--status-info-bg)',fg:'var(--status-info)'},
+    warn:{bg:'var(--status-warn-bg)',fg:'var(--status-warn)'},
+    neutral:{bg:'var(--cream-200)',fg:'var(--cocoa-500)'},
+  }[tone];
+  return <span style={{background:t.bg,color:t.fg,borderRadius:'var(--radius-pill)',padding:'3px 10px',font:'700 11px var(--font-body)',letterSpacing:'.03em',textTransform:'uppercase',display:'inline-block',...style}}>{children}</span>;
+}

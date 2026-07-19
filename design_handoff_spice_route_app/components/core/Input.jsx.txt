@@ -1,0 +1,13 @@
+export function Input({label,hint,error,icon,style,...rest}){
+  const [focus,setFocus]=React.useState(false);
+  return <label style={{display:'block',fontFamily:'var(--font-body)',...style}}>
+    {label&&<div style={{fontWeight:700,fontSize:13,marginBottom:6}}>{label}</div>}
+    <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface-card)',border:error?'1.5px solid var(--status-danger)':focus?'1.5px solid var(--border-focus)':'1.5px solid var(--border-subtle)',borderRadius:'var(--radius-md)',padding:'11px 14px',transition:'border-color var(--dur-fast) var(--ease-out)'}}>
+      {icon&&<span style={{color:'var(--text-muted)',display:'flex'}}>{icon}</span>}
+      <input {...rest} onFocus={e=>{setFocus(true);rest.onFocus&&rest.onFocus(e)}} onBlur={e=>{setFocus(false);rest.onBlur&&rest.onBlur(e)}}
+        style={{border:'none',outline:'none',background:'transparent',font:'600 15px var(--font-body)',color:'var(--text-body)',width:'100%'}}/>
+    </div>
+    {error?<div style={{fontSize:12,fontWeight:600,color:'var(--status-danger)',marginTop:4}}>{error}</div>
+      :hint?<div style={{fontSize:12,fontWeight:600,color:'var(--text-muted)',marginTop:4}}>{hint}</div>:null}
+  </label>;
+}

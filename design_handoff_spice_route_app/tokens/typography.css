@@ -1,0 +1,13 @@
+:root{
+/* Font stacks — each includes Tamil + Devanagari companions so Hindi/Tamil copy renders in the same voice */
+--font-display:'Baloo 2','Baloo Thambi 2',system-ui,sans-serif;
+--font-body:'Nunito','Mukta','Mukta Malar',system-ui,sans-serif;
+/* Scale (mobile-first) */
+--text-hero:28px;--text-title:22px;--text-heading:18px;--text-body-size:15px;--text-small:13px;--text-tiny:11px;
+--lh-tight:1.15;/* @kind other */--lh-snug:1.3;/* @kind other */--lh-body:1.5;/* @kind other */
+--weight-regular:400;--weight-semibold:600;--weight-bold:700;--weight-heavy:800;
+}
+body{font-family:var(--font-body);color:var(--text-body);font-size:var(--text-body-size);line-height:var(--lh-body)}
+h1,h2,h3,h4{font-family:var(--font-display);line-height:var(--lh-tight);margin:0}
+a{color:var(--text-brand);text-decoration:none}
+a:hover{color:var(--action-primary-hover);text-decoration:underline}

@@ -1,0 +1,6 @@
+/** Toast notification bar. */
+export interface ToastProps {
+  tone?: 'success'|'danger'|'info';
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

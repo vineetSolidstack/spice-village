@@ -1,0 +1,11 @@
+/** Circular icon-only button. */
+export interface IconButtonProps {
+  /** Accessible label (required) */
+  label: string;
+  variant?: 'ghost'|'tonal'|'solid';
+  /** Diameter px, default 40 */
+  size?: number;
+  onClick?: () => void;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

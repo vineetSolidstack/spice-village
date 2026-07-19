@@ -1,0 +1,14 @@
+/** Pill-shaped action button.
+ * @startingPoint section="Core" subtitle="Primary, secondary, accent, outline, ghost, danger" viewport="700x220"
+ */
+export interface ButtonProps {
+  /** 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'danger' */
+  variant?: 'primary'|'secondary'|'accent'|'outline'|'ghost'|'danger';
+  size?: 'sm'|'md'|'lg';
+  disabled?: boolean;
+  /** Leading icon node (Lucide SVG) */
+  icon?: React.ReactNode;
+  onClick?: () => void;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

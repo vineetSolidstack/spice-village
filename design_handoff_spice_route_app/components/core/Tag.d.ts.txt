@@ -1,0 +1,7 @@
+/** Selectable filter chip. */
+export interface TagProps {
+  selected?: boolean;
+  onClick?: () => void;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

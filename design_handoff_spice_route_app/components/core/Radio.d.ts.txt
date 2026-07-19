@@ -1,0 +1,8 @@
+/** Radio option with label and optional description. */
+export interface RadioProps {
+  checked: boolean;
+  onChange?: () => void;
+  label: string;
+  description?: string;
+  style?: React.CSSProperties;
+}

@@ -1,0 +1,11 @@
+export function LanguagePicker({value='en',onChange,style}){
+  const langs=[{code:'en',native:'English',label:'English'},{code:'ta',native:'தமிழ்',label:'Tamil'},{code:'hi',native:'हिन्दी',label:'Hindi'}];
+  return <div style={{display:'flex',flexDirection:'column',gap:10,fontFamily:'var(--font-body)',...style}}>
+    {langs.map(l=><button key={l.code} onClick={()=>onChange&&onChange(l.code)}
+      style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface-card)',border:value===l.code?'2px solid var(--paprika-600)':'1.5px solid var(--border-subtle)',borderRadius:'var(--radius-lg)',padding:'14px 16px',cursor:'pointer',textAlign:'left'}}>
+      <span><span style={{fontFamily:'var(--font-display)',fontWeight:700,fontSize:17,display:'block',color:'var(--text-body)'}}>{l.native}</span>
+      <span style={{font:'600 12px var(--font-body)',color:'var(--text-muted)'}}>{l.label}{l.code==='en'?' · Default':''}</span></span>
+      {value===l.code&&<span style={{width:22,height:22,borderRadius:'50%',background:'var(--action-primary)',display:'inline-flex',alignItems:'center',justifyContent:'center'}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>}
+    </button>)}
+  </div>;
+}

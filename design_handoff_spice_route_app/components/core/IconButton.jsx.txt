@@ -1,0 +1,7 @@
+export function IconButton({children,label,variant='ghost',size=40,onClick,style}){
+  const [hover,setHover]=React.useState(false);
+  const bg={ghost:hover?'var(--paprika-50)':'transparent',tonal:hover?'var(--paprika-100)':'var(--surface-brand-soft)',solid:hover?'var(--action-primary-hover)':'var(--action-primary)'}[variant];
+  const color=variant==='solid'?'#fff':'var(--text-brand)';
+  return <button aria-label={label} onClick={onClick} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+    style={{width:size,height:size,borderRadius:'var(--radius-pill)',border:'none',background:bg,color,display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background var(--dur-fast) var(--ease-out)',...style}}>{children}</button>;
+}

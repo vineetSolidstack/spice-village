@@ -1,0 +1,8 @@
+export function Checkbox({checked,onChange,label,style}){
+  return <label style={{display:'inline-flex',alignItems:'center',gap:10,cursor:'pointer',fontFamily:'var(--font-body)',...style}}>
+    <span onClick={()=>onChange&&onChange(!checked)} style={{width:22,height:22,borderRadius:7,flexShrink:0,border:checked?'none':'2px solid var(--border-strong)',background:checked?'var(--action-primary)':'var(--surface-card)',display:'inline-flex',alignItems:'center',justifyContent:'center',transition:'background var(--dur-fast) var(--ease-out)'}}>
+      {checked&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>}
+    </span>
+    {label&&<span style={{fontWeight:600,fontSize:14}}>{label}</span>}
+  </label>;
+}

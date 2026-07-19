@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Spice Route",
+    "slug": "spice-route",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "spiceroute",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFF8F0",
+    "splash": {
+      "backgroundColor": "#FFF8F0",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.spiceroute.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Spice Route uses the camera to scan pickup QR codes when verifying orders."
+      }
+    },
+    "android": {
+      "package": "com.spiceroute.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF8F0",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Spice Route uses the camera to scan pickup QR codes when verifying orders."
+        }
+      ],
+      "expo-notifications"
+    ]
+  }
+}

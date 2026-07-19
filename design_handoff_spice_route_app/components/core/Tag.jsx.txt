@@ -1,0 +1,5 @@
+export function Tag({selected,onClick,children,style}){
+  const [hover,setHover]=React.useState(false);
+  return <button onClick={onClick} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+    style={{borderRadius:'var(--radius-pill)',padding:'8px 16px',font:'700 13px var(--font-body)',cursor:'pointer',border:selected?'1.5px solid var(--paprika-600)':'1.5px solid var(--border-subtle)',background:selected?'var(--surface-brand-soft)':hover?'var(--cream-200)':'var(--surface-card)',color:selected?'var(--text-brand)':'var(--text-body)',transition:'all var(--dur-fast) var(--ease-out)',...style}}>{children}</button>;
+}

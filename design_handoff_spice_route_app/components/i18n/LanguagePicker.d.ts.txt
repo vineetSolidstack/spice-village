@@ -1,0 +1,9 @@
+/** Language selection list — English (default), Tamil, Hindi. Lives in Profile.
+ * @startingPoint section="Core" subtitle="English / Tamil / Hindi switcher" viewport="700x260"
+ */
+export interface LanguagePickerProps {
+  /** 'en' | 'ta' | 'hi' */
+  value: 'en'|'ta'|'hi';
+  onChange?: (code: 'en'|'ta'|'hi') => void;
+  style?: React.CSSProperties;
+}

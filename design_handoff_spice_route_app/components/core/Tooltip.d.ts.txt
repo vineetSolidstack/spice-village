@@ -1,0 +1,6 @@
+/** Hover tooltip. */
+export interface TooltipProps {
+  label: string;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

@@ -1,0 +1,12 @@
+export function Select({label,options=[],value,onChange,style}){
+  return <label style={{display:'block',fontFamily:'var(--font-body)',...style}}>
+    {label&&<div style={{fontWeight:700,fontSize:13,marginBottom:6}}>{label}</div>}
+    <div style={{position:'relative'}}>
+      <select value={value} onChange={e=>onChange&&onChange(e.target.value)}
+        style={{appearance:'none',WebkitAppearance:'none',width:'100%',background:'var(--surface-card)',border:'1.5px solid var(--border-subtle)',borderRadius:'var(--radius-md)',padding:'12px 40px 12px 14px',font:'600 15px var(--font-body)',color:'var(--text-body)',cursor:'pointer'}}>
+        {options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}
+      </select>
+      <svg style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+  </label>;
+}

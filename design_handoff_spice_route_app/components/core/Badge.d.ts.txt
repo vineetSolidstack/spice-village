@@ -1,0 +1,6 @@
+/** Status pill badge. */
+export interface BadgeProps {
+  tone?: 'brand'|'accent'|'success'|'danger'|'info'|'warn'|'neutral';
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

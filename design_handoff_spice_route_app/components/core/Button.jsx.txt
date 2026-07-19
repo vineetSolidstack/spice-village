@@ -1,0 +1,20 @@
+export function Button({variant='primary',size='md',disabled,children,icon,onClick,style}){
+  const pad={sm:'8px 16px',md:'12px 24px',lg:'14px 28px'}[size];
+  const fs={sm:13,md:14,lg:15}[size];
+  const styles={
+    primary:{background:'var(--action-primary)',color:'var(--text-on-brand)',border:'none'},
+    secondary:{background:'var(--surface-brand-soft)',color:'var(--text-brand)',border:'none'},
+    accent:{background:'var(--action-accent)',color:'var(--cocoa-900)',border:'none'},
+    outline:{background:'transparent',color:'var(--text-brand)',border:'1.5px solid var(--paprika-500)'},
+    ghost:{background:'transparent',color:'var(--text-brand)',border:'none'},
+    danger:{background:'var(--status-danger)',color:'#fff',border:'none'},
+  }[variant];
+  const [hover,setHover]=React.useState(false),[press,setPress]=React.useState(false);
+  const hoverBg={primary:'var(--action-primary-hover)',secondary:'var(--paprika-100)',accent:'var(--action-accent-hover)',outline:'var(--paprika-50)',ghost:'var(--paprika-50)',danger:'#A82121'}[variant];
+  return <button onClick={onClick} disabled={disabled}
+    onMouseEnter={()=>setHover(true)} onMouseLeave={()=>{setHover(false);setPress(false)}}
+    onMouseDown={()=>setPress(true)} onMouseUp={()=>setPress(false)}
+    style={{...styles,...(hover&&!disabled?{background:hoverBg}:null),borderRadius:'var(--radius-pill)',padding:pad,fontFamily:'var(--font-body)',fontWeight:700,fontSize:fs,cursor:disabled?'default':'pointer',opacity:disabled?.45:1,display:'inline-flex',alignItems:'center',gap:8,transform:press&&!disabled?'scale(.98)':'none',transition:'background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out)',...style}}>
+    {icon}{children}
+  </button>;
+}

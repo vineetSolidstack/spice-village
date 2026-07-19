@@ -1,0 +1,16 @@
+:root{
+/* Base palette — spice market, fresh & appetizing */
+--paprika-700:#A63A0C;--paprika-600:#C1440E;--paprika-500:#D9531A;--paprika-100:#FBE3D6;--paprika-50:#FDF1EA;
+--turmeric-600:#D18A22;--turmeric-500:#E8A33D;--turmeric-100:#FAEBD2;--turmeric-50:#FDF6EA;
+--cocoa-900:#2B1D12;--cocoa-700:#5C3A21;--cocoa-500:#8A6A50;--cocoa-300:#C4AD9A;
+--cream-0:#FFFFFF;--cream-50:#FFFCF8;--cream-100:#FFF8F0;--cream-200:#F7EDE0;--cream-300:#EFDFCC;
+--mint-600:#1F7A4D;--mint-100:#DCF2E6;
+--chili-600:#C62828;--chili-100:#FBE0E0;
+--sky-600:#1565A7;--sky-100:#DFEEFA;
+/* Semantic aliases */
+--surface-page:var(--cream-100);--surface-card:var(--cream-0);--surface-sunken:var(--cream-200);--surface-brand:var(--paprika-600);--surface-brand-soft:var(--paprika-50);--surface-accent-soft:var(--turmeric-50);
+--text-body:var(--cocoa-900);--text-muted:var(--cocoa-500);--text-faint:var(--cocoa-300);--text-on-brand:#FFFFFF;--text-brand:var(--paprika-600);
+--border-subtle:var(--cream-300);--border-strong:var(--cocoa-300);--border-focus:var(--paprika-500);
+--action-primary:var(--paprika-600);--action-primary-hover:var(--paprika-700);--action-accent:var(--turmeric-500);--action-accent-hover:var(--turmeric-600);
+--status-success:var(--mint-600);--status-success-bg:var(--mint-100);--status-danger:var(--chili-600);--status-danger-bg:var(--chili-100);--status-info:var(--sky-600);--status-info-bg:var(--sky-100);--status-warn:var(--turmeric-600);--status-warn-bg:var(--turmeric-100);
+}

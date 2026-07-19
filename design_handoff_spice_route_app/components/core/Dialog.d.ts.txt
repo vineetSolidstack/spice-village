@@ -1,0 +1,9 @@
+/** Bottom-sheet dialog (mobile-first). */
+export interface DialogProps {
+  open: boolean;
+  onClose?: () => void;
+  title?: string;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}

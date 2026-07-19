@@ -1,0 +1,8 @@
+export function Card({image,imageHeight=140,onClick,children,style}){
+  const [hover,setHover]=React.useState(false);
+  return <div onClick={onClick} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+    style={{background:'var(--surface-card)',borderRadius:'var(--radius-lg)',boxShadow:hover&&onClick?'var(--shadow-raised)':'var(--shadow-card)',overflow:'hidden',cursor:onClick?'pointer':'default',transition:'box-shadow var(--dur-base) var(--ease-out)',fontFamily:'var(--font-body)',...style}}>
+    {image&&<div style={{height:imageHeight,background:'var(--cream-200) center/cover',backgroundImage:image.startsWith('linear')||image.startsWith('url')?image:'url('+image+')',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-faint)',font:'600 12px var(--font-body)'}}>{!image.startsWith('url')&&!image.startsWith('linear')&&image.startsWith('#')?'photo':null}</div>}
+    <div style={{padding:16}}>{children}</div>
+  </div>;
+}
