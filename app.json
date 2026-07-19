@@ -1,7 +1,9 @@
 {
   "expo": {
     "name": "Spice Route",
-    "slug": "spice-route",
+    "//": "slug and owner must match the EAS project @solidstack/vkp; `name` is what shows on the device.",
+    "slug": "vkp",
+    "owner": "solidstack",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -42,6 +44,17 @@
         }
       ],
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c64a5403-4e32-4c5e-8b8f-ebf92d4a7031"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c64a5403-4e32-4c5e-8b8f-ebf92d4a7031"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
