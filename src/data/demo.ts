@@ -6,7 +6,9 @@
  * The same shapes come back from the Supabase repository, so screens never know
  * which source they're reading from.
  */
-import { gradient } from '../components/Media';
+import { asset, gradient } from '../components/Media';
+import type { MediaFill } from '../components/Media';
+import { FOOD_IMAGES } from './images';
 import type {
   Approval,
   BulkRequest,
@@ -29,9 +31,11 @@ const dish = (
   oldPrice: number,
   veg: boolean,
   description: string,
-  from: string,
-  to: string,
-): Dish => ({ id, name, price, oldPrice, veg, description, image: gradient(from, to), available: true });
+  image: MediaFill,
+): Dish => ({ id, name, price, oldPrice, veg, description, image, available: true });
+
+/** A few items (a drink, a dessert) have no matching photo — a warm gradient stands in. */
+const F = FOOD_IMAGES;
 
 export const KITCHENS: Kitchen[] = [
   {
@@ -41,16 +45,16 @@ export const KITCHENS: Kitchen[] = [
     distance: '1.2 km',
     rating: 4.8,
     featured: true,
-    image: gradient('#E8A33D', '#C1440E'),
+    image: asset(F.chicken_mandi),
     combos: [
-      dish('c1', 'Sunday tiffin combo', 220, 275, true, 'Dosa, idli, vada, pongal + filter coffee', '#E8A33D', '#C1440E'),
-      dish('c2', 'Feast for two', 420, 520, false, 'Chettinad chicken, dosas, dessert for two', '#D9531A', '#7A2E1D'),
+      dish('c1', 'Sunday tiffin combo', 220, 275, true, 'Dosa, idli, vada, pongal + filter coffee', asset(F.kedgeree)),
+      dish('c2', 'Feast for two', 420, 520, false, 'Chettinad chicken, dosas, dessert for two', asset(F.beef_mandi)),
     ],
     menu: [
-      dish('m1', 'Ghee dosa (2 pc)', 90, 110, true, 'Crisp, golden, brushed with homemade ghee', '#F4C877', '#D9531A'),
-      dish('m2', 'Sambar idli bowl', 70, 85, true, 'Soft idlis soaked in drumstick sambar', '#FBE3D6', '#E8A33D'),
-      dish('m3', 'Chicken chettinad', 180, 220, false, 'Slow-cooked with roasted spice masala', '#C1440E', '#5C3A21'),
-      dish('m4', 'Filter coffee', 35, 40, true, 'Frothy, strong, brewed in brass', '#8A6A50', '#5C3A21'),
+      dish('m1', 'Ghee dosa (2 pc)', 90, 110, true, 'Crisp, golden, brushed with homemade ghee', asset(F.bread_omelette)),
+      dish('m2', 'Sambar idli bowl', 70, 85, true, 'Soft idlis soaked in drumstick sambar', asset(F.dal_fry)),
+      dish('m3', 'Chicken chettinad', 180, 220, false, 'Slow-cooked with roasted spice masala', asset(F.chicken_handi)),
+      dish('m4', 'Filter coffee', 35, 40, true, 'Frothy, strong, brewed in brass', gradient('#8A6A50', '#5C3A21')),
     ],
   },
   {
@@ -60,14 +64,14 @@ export const KITCHENS: Kitchen[] = [
     distance: '2.1 km',
     rating: 4.6,
     featured: true,
-    image: gradient('#D9531A', '#5C3A21'),
+    image: asset(F.lamb_biryani),
     combos: [
-      dish('c3', 'Punjabi lunchbox', 250, 310, true, 'Thali + halwa + lassi, packed to go', '#F4C877', '#B0653A'),
+      dish('c3', 'Punjabi lunchbox', 250, 310, true, 'Thali + halwa + lassi, packed to go', asset(F.rogan_josh)),
     ],
     menu: [
-      dish('m5', 'Rajma chawal thali', 150, 180, true, 'Comfort bowl with pickle & papad', '#B0653A', '#7A2E1D'),
-      dish('m6', 'Butter paneer + 4 roti', 190, 230, true, 'Creamy tomato gravy, tandoor rotis', '#E8A33D', '#C62828'),
-      dish('m7', 'Gajar halwa cup', 80, 95, true, 'Warm, slow-stirred, extra nuts', '#D9531A', '#A63A0C'),
+      dish('m5', 'Rajma chawal thali', 150, 180, true, 'Comfort bowl with pickle & papad', asset(F.rajma)),
+      dish('m6', 'Butter paneer + 4 roti', 190, 230, true, 'Creamy tomato gravy, tandoor rotis', asset(F.matar_paneer)),
+      dish('m7', 'Gajar halwa cup', 80, 95, true, 'Warm, slow-stirred, extra nuts', gradient('#D9531A', '#A63A0C')),
     ],
   },
   {
@@ -77,11 +81,11 @@ export const KITCHENS: Kitchen[] = [
     distance: '800 m',
     rating: 4.9,
     featured: false,
-    image: gradient('#2A9D8F', '#1F7A4D'),
+    image: asset(F.red_curry_kebab),
     combos: [],
     menu: [
-      dish('m8', 'Medu vada (4 pc)', 60, 75, true, 'Crunchy outside, cloud-soft inside', '#E8A33D', '#8A6A50'),
-      dish('m9', 'Onion pakora plate', 55, 65, true, 'Rainy-day fritters with mint chutney', '#2A9D8F', '#1F7A4D'),
+      dish('m8', 'Medu vada (4 pc)', 60, 75, true, 'Crunchy outside, cloud-soft inside', asset(F.baingan_bharta)),
+      dish('m9', 'Onion pakora plate', 55, 65, true, 'Rainy-day fritters with mint chutney', asset(F.fried_rice)),
     ],
   },
 ];
@@ -104,7 +108,7 @@ export const WORKSHOPS: Workshop[] = [
     duration: '2 hrs',
     seatsLeft: 3,
     status: 'Live',
-    image: gradient('#E8A33D', '#D9531A'),
+    image: asset(F.bread_omelette),
     sessions: [
       { id: 'w1s1', when: 'Sat 25 Jul · 10 am', capacity: 8, booked: 5 },
       { id: 'w1s2', when: 'Sun 26 Jul · 10 am', capacity: 8, booked: 8 },
@@ -119,7 +123,7 @@ export const WORKSHOPS: Workshop[] = [
     duration: '3 hrs',
     seatsLeft: 8,
     status: 'Live',
-    image: gradient('#C1440E', '#5C3A21'),
+    image: asset(F.lamb_biryani),
     sessions: [
       { id: 'w2s1', when: 'Sun 26 Jul · 11 am', capacity: 12, booked: 4 },
       { id: 'w2s2', when: 'Sun 2 Aug · 11 am', capacity: 12, booked: 1 },
@@ -133,7 +137,7 @@ export const WORKSHOPS: Workshop[] = [
     duration: '90 min',
     seatsLeft: 12,
     status: 'Live',
-    image: gradient('#2A9D8F', '#17805E'),
+    image: asset(F.noodle_salad),
     sessions: [{ id: 'w3s1', when: 'Sat 25 Jul · 3 pm', capacity: 14, booked: 2 }],
   },
   {
@@ -144,7 +148,7 @@ export const WORKSHOPS: Workshop[] = [
     duration: '90 min',
     seatsLeft: 10,
     status: 'Draft',
-    image: gradient('#E8A33D', '#8A6A50'),
+    image: asset(F.green_curry),
     sessions: [{ id: 'w4s1', when: 'Sun 9 Aug · 11 am', capacity: 10, booked: 0 }],
   },
 ];

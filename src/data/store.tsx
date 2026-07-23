@@ -19,6 +19,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import {
   APPROVALS,
   BULK_REQUESTS,
+  CATEGORIES,
   CUSTOMER_ORDERS,
   KITCHENS,
   MANAGED_KITCHENS,
@@ -32,6 +33,7 @@ import type {
   Approval,
   BulkRequest,
   BulkStatus,
+  Dish,
   Kitchen,
   KitchenState,
   ManagedKitchen,
@@ -88,11 +90,18 @@ type StoreValue = {
 
   setDishAvailability: (kitchenSlug: string, dishId: string, available: boolean) => void;
   removeDish: (kitchenSlug: string, dishId: string) => void;
+  /** Create a dish (blank id) or replace an existing one, into combos or meals. */
+  saveDish: (kitchenSlug: string, dish: Dish, isCombo: boolean) => void;
 
   submitBulkRequest: (input: Omit<BulkRequest, 'id' | 'status'>) => void;
   answerBulkRequest: (id: string, status: BulkStatus) => void;
 
   bookWorkshop: (sessionId: string, people: number, payment: PaymentMode, attendee: string) => void;
+  /** Create a workshop (blank id) or replace an existing one. */
+  saveWorkshop: (workshop: Workshop) => void;
+  /** Add cuisine categories curated by the super admin. */
+  categories: string[];
+  addCategory: (name: string) => void;
 
   decideApproval: (id: string, approved: boolean) => void;
   setKitchenState: (name: string, state: KitchenState) => void;
@@ -116,6 +125,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [managedKitchens, setManagedKitchens] = useState<ManagedKitchen[]>(MANAGED_KITCHENS);
   const [users] = useState<PlatformUser[]>(PLATFORM_USERS);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
+  const [categories, setCategories] = useState<string[]>(CATEGORIES);
 
   const getKitchen = useCallback(
     (slug: string) => kitchens.find((k) => k.slug === slug),
@@ -239,6 +249,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const saveDish = useCallback((kitchenSlug: string, dish: Dish, isCombo: boolean) => {
+    // A blank id means "create"; allocate one and append. Otherwise replace in place.
+    const withId: Dish = dish.id ? dish : { ...dish, id: `d${Date.now()}` };
+    setKitchens((current) =>
+      current.map((k) => {
+        if (k.slug !== kitchenSlug) return k;
+        // A dish only ever lives in one list; drop it from both, then insert.
+        const menu = k.menu.filter((d) => d.id !== withId.id);
+        const combos = k.combos.filter((d) => d.id !== withId.id);
+        return isCombo
+          ? { ...k, combos: [...combos, withId], menu }
+          : { ...k, menu: [...menu, withId], combos };
+      }),
+    );
+  }, []);
+
+  const saveWorkshop = useCallback((workshop: Workshop) => {
+    const withId: Workshop = workshop.id ? workshop : { ...workshop, id: `w${Date.now()}` };
+    setWorkshops((current) => {
+      const exists = current.some((w) => w.id === withId.id);
+      return exists ? current.map((w) => (w.id === withId.id ? withId : w)) : [...current, withId];
+    });
+  }, []);
+
+  const addCategory = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setCategories((current) => (current.includes(trimmed) ? current : [...current, trimmed]));
+  }, []);
+
   const submitBulkRequest = useCallback<StoreValue['submitBulkRequest']>((input) => {
     if (isSupabaseConfigured) void remote.requestBulkQuote(input);
     setBulkRequests((current) => [
@@ -331,9 +371,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addSlot,
       setDishAvailability,
       removeDish,
+      saveDish,
       submitBulkRequest,
       answerBulkRequest,
       bookWorkshop,
+      saveWorkshop,
+      categories,
+      addCategory,
       decideApproval,
       setKitchenState,
       setFeatured,
@@ -358,9 +402,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addSlot,
       setDishAvailability,
       removeDish,
+      saveDish,
       submitBulkRequest,
       answerBulkRequest,
       bookWorkshop,
+      saveWorkshop,
+      categories,
+      addCategory,
       decideApproval,
       setKitchenState,
       setFeatured,

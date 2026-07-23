@@ -1,5 +1,6 @@
 /**
- * Menu management — availability switch (dims the row), edit and delete.
+ * Menu management — availability switch (dims the row), edit and delete, plus
+ * the add/edit item editor with a photo picker.
  */
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -20,18 +21,22 @@ import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
 import { DEMO_PROFILE } from '../../data/demo';
 import { money } from '../../lib/format';
+import { blankDish, DishEditorSheet, type DishDraft } from './DishEditorSheet';
 import type { Dish } from '../../data/types';
 
 export function KitchenMenuScreen() {
   const type = useType();
-  const { getKitchen, setDishAvailability, removeDish } = useStore();
+  const { getKitchen, setDishAvailability, removeDish, saveDish } = useStore();
   const { showToast } = useToast();
   const [confirming, setConfirming] = useState<Dish | null>(null);
+  const [editing, setEditing] = useState<DishDraft | null>(null);
 
   const kitchen = getKitchen(DEMO_PROFILE.kitchen.slug);
   if (!kitchen) return null;
 
-  const items = [...kitchen.combos, ...kitchen.menu];
+  const combos = kitchen.combos.map((d) => ({ dish: d, isCombo: true }));
+  const meals = kitchen.menu.map((d) => ({ dish: d, isCombo: false }));
+  const items = [...combos, ...meals];
 
   return (
     <Screen bottomInset={16}>
@@ -41,7 +46,7 @@ export function KitchenMenuScreen() {
           <Button
             size="sm"
             icon={<Plus size={16} color="#FFFFFF" strokeWidth={2} />}
-            onPress={() => showToast('Item editor is not built yet', 'info')}
+            onPress={() => setEditing({ dish: blankDish(), isCombo: false })}
           >
             Add item
           </Button>
@@ -49,7 +54,7 @@ export function KitchenMenuScreen() {
       />
 
       <View style={styles.body}>
-        {items.map((dish) => (
+        {items.map(({ dish, isCombo }) => (
           <View
             key={dish.id}
             style={[styles.row, shadow.card, dish.available === false ? styles.dimmed : null]}
@@ -71,13 +76,12 @@ export function KitchenMenuScreen() {
             <Switch
               checked={dish.available !== false}
               onChange={(value) => setDishAvailability(kitchen.slug, dish.id, value)}
-              label={undefined}
             />
 
             <IconButton
               label={`Edit ${dish.name}`}
               size={34}
-              onPress={() => showToast('Item editor is not built yet', 'info')}
+              onPress={() => setEditing({ dish, isCombo })}
             >
               <Pencil size={16} color={colors.textBrand} strokeWidth={2} />
             </IconButton>
@@ -88,6 +92,16 @@ export function KitchenMenuScreen() {
           </View>
         ))}
       </View>
+
+      <DishEditorSheet
+        draft={editing}
+        onClose={() => setEditing(null)}
+        onSave={(dish, isCombo) => {
+          const creating = !dish.id;
+          saveDish(kitchen.slug, dish, isCombo);
+          showToast(creating ? `${dish.name} added` : `${dish.name} saved`, 'info');
+        }}
+      />
 
       <Dialog
         open={confirming !== null}

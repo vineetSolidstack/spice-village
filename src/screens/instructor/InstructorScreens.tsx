@@ -2,7 +2,7 @@
  * Workshop instructor portal — dashboard, workshops, bookings.
  * Plain functional copy throughout; puns are customer-facing only.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Calendar, Pencil, Plus } from 'lucide-react-native';
 
@@ -24,12 +24,18 @@ import { useStore } from '../../data/store';
 import { DEMO_PROFILE, INSTRUCTOR_MONTH_EARNINGS, INSTRUCTOR_WORKSHOP_IDS } from '../../data/demo';
 import { money, plural } from '../../lib/format';
 import { useRole } from '../../state/role';
-import type { WorkshopBooking } from '../../data/types';
+import { blankWorkshop, WorkshopEditorSheet } from './WorkshopEditorSheet';
+import type { Workshop, WorkshopBooking } from '../../data/types';
 
-/** Workshops belonging to the signed-in instructor. */
+/**
+ * Workshops belonging to the signed-in instructor: the seeded ones, plus any
+ * they create in this session (which carry their name as host).
+ */
 function useMyWorkshops() {
   const { workshops } = useStore();
-  return workshops.filter((w) => INSTRUCTOR_WORKSHOP_IDS.includes(w.id));
+  return workshops.filter(
+    (w) => INSTRUCTOR_WORKSHOP_IDS.includes(w.id) || w.host === DEMO_PROFILE.instructor.name,
+  );
 }
 
 /* ------------------------------------------------------------ dashboard -- */
@@ -77,7 +83,9 @@ export function InstructorDashboardScreen() {
 export function InstructorWorkshopsScreen() {
   const type = useType();
   const mine = useMyWorkshops();
+  const { saveWorkshop } = useStore();
   const { showToast } = useToast();
+  const [editing, setEditing] = useState<Workshop | null>(null);
 
   return (
     <Screen bottomInset={16}>
@@ -87,7 +95,7 @@ export function InstructorWorkshopsScreen() {
           <Button
             size="sm"
             icon={<Plus size={16} color="#FFFFFF" strokeWidth={2} />}
-            onPress={() => showToast('Workshop editor is not built yet', 'info')}
+            onPress={() => setEditing(blankWorkshop())}
           >
             New
           </Button>
@@ -104,11 +112,7 @@ export function InstructorWorkshopsScreen() {
               <Badge tone={workshop.status === 'Live' ? 'success' : 'neutral'}>
                 {workshop.status}
               </Badge>
-              <IconButton
-                label={`Edit ${workshop.title}`}
-                size={32}
-                onPress={() => showToast('Workshop editor is not built yet', 'info')}
-              >
+              <IconButton label={`Edit ${workshop.title}`} size={32} onPress={() => setEditing(workshop)}>
                 <Pencil size={15} color={colors.textBrand} strokeWidth={2} />
               </IconButton>
             </View>
@@ -138,6 +142,16 @@ export function InstructorWorkshopsScreen() {
           </View>
         ))}
       </View>
+
+      <WorkshopEditorSheet
+        draft={editing}
+        onClose={() => setEditing(null)}
+        onSave={(workshop) => {
+          const creating = !workshop.id;
+          saveWorkshop(workshop);
+          showToast(creating ? `${workshop.title} created` : `${workshop.title} saved`, 'info');
+        }}
+      />
     </Screen>
   );
 }

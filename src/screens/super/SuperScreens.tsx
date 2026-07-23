@@ -7,6 +7,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import {
   Badge,
   Button,
+  Dialog,
+  Input,
   Media,
   PortalHeader,
   Screen,
@@ -20,10 +22,9 @@ import { gradient } from '../../components/Media';
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
-import { CATEGORIES } from '../../data/demo';
 import { plural } from '../../lib/format';
 import { useRole } from '../../state/role';
-import type { KitchenState } from '../../data/types';
+import type { KitchenState, PlatformUser } from '../../data/types';
 
 /** Kitchens have no photography yet; the list uses the brand placeholder fill. */
 const PLACEHOLDER = gradient('#E8A33D', '#C1440E');
@@ -175,6 +176,7 @@ export function SuperUsersScreen() {
   const type = useType();
   const { users } = useStore();
   const { showToast } = useToast();
+  const [selected, setSelected] = useState<PlatformUser | null>(null);
 
   return (
     <Screen bottomInset={16}>
@@ -193,17 +195,62 @@ export function SuperUsersScreen() {
                 {user.orders !== null ? ` · ${plural(user.orders, 'order')}` : ''}
               </Text>
             </View>
-            <Button
-              size="sm"
-              variant="ghost"
-              onPress={() => showToast('User detail is not built yet', 'info')}
-            >
+            <Button size="sm" variant="ghost" onPress={() => setSelected(user)}>
               Manage
             </Button>
           </View>
         ))}
       </View>
+
+      <Dialog
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        title={selected?.name}
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onPress={() => {
+                showToast(`Reset link sent to ${selected?.name}`, 'info');
+                setSelected(null);
+              }}
+            >
+              Send reset link
+            </Button>
+            <Button
+              variant="danger"
+              onPress={() => {
+                showToast(`${selected?.name} suspended`, 'info');
+                setSelected(null);
+              }}
+            >
+              Suspend
+            </Button>
+          </>
+        }
+      >
+        {selected ? (
+          <View style={styles.detailList}>
+            <DetailRow label="Role" value={selected.role} />
+            <DetailRow
+              label="Lifetime orders"
+              value={selected.orders !== null ? String(selected.orders) : '—'}
+            />
+            <DetailRow label="Status" value="Active" />
+          </View>
+        ) : null}
+      </Dialog>
     </Screen>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  const type = useType();
+  return (
+    <View style={styles.detailRow}>
+      <Text style={[type.body(13, 600), { color: colors.textMuted }]}>{label}</Text>
+      <Text style={type.body(13, 700)}>{value}</Text>
+    </View>
   );
 }
 
@@ -211,11 +258,22 @@ export function SuperUsersScreen() {
 
 export function SuperCurationScreen() {
   const type = useType();
-  const { managedKitchens, setFeatured } = useStore();
+  const { managedKitchens, setFeatured, categories, addCategory } = useStore();
   const { setRole } = useRole();
   const { showToast } = useToast();
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
 
   const approved = managedKitchens.filter((k) => k.state === 'Approved');
+
+  const onAdd = () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    addCategory(trimmed);
+    setName('');
+    setAdding(false);
+    showToast(`${trimmed} added`, 'info');
+  };
 
   return (
     <Screen bottomInset={16}>
@@ -225,20 +283,40 @@ export function SuperCurationScreen() {
         <View>
           <SectionLabel style={styles.groupLabel}>Cuisine categories</SectionLabel>
           <View style={styles.categoryRow}>
-            {CATEGORIES.map((category) => (
+            {categories.map((category) => (
               <View key={category} style={styles.categoryChip}>
                 <Text style={type.body(13, 700)}>{category}</Text>
               </View>
             ))}
-            <Button
-              size="sm"
-              variant="secondary"
-              onPress={() => showToast('Category editor is not built yet', 'info')}
-            >
+            <Button size="sm" variant="secondary" onPress={() => setAdding(true)}>
               + Add
             </Button>
           </View>
         </View>
+
+        <Dialog
+          open={adding}
+          onClose={() => setAdding(false)}
+          title="Add cuisine category"
+          footer={
+            <>
+              <Button variant="ghost" onPress={() => setAdding(false)}>
+                Cancel
+              </Button>
+              <Button disabled={!name.trim()} onPress={onAdd}>
+                Add
+              </Button>
+            </>
+          }
+        >
+          <Input
+            label="Category name"
+            placeholder="Chettinad"
+            value={name}
+            onChangeText={setName}
+            onSubmitEditing={onAdd}
+          />
+        </Dialog>
 
         <View>
           <SectionLabel style={styles.groupLabel}>Featured on home</SectionLabel>
@@ -316,4 +394,12 @@ const styles = StyleSheet.create({
   featuredDivider: { borderTopWidth: 1, borderTopColor: colors.borderSubtle },
   featuredName: { flex: 1 },
   divider: { height: 1, backgroundColor: colors.borderSubtle, marginTop: 6 },
+  detailList: { gap: 2 },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+  },
 });

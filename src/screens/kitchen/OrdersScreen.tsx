@@ -7,14 +7,16 @@
  */
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { ScanLine } from 'lucide-react-native';
 
-import { Badge, Button, PortalHeader, Screen, useToast } from '../../components';
+import { Badge, Button, IconButton, PortalHeader, Screen, useToast } from '../../components';
 import { colors, displayFont, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
 import { DEMO_PROFILE } from '../../data/demo';
 import { OrderRow } from './OrderRow';
 import { VerifyQrSheet } from './VerifyQrSheet';
+import { QrScannerScreen } from './QrScannerScreen';
 import type { BulkRequest, BulkStatus, Order } from '../../data/types';
 import type { BadgeTone } from '../../components/Badge';
 
@@ -27,12 +29,20 @@ const BULK_TONE: Record<BulkStatus, BadgeTone> = {
 export function KitchenOrdersScreen() {
   const { kitchenOrders, bulkRequests, advanceOrder, answerBulkRequest, verifySlotCode } = useStore();
   const [verifying, setVerifying] = useState<Order | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   const mine = bulkRequests.filter((b) => b.kitchenSlug === DEMO_PROFILE.kitchen.slug);
 
   return (
     <Screen bottomInset={16}>
-      <PortalHeader title="Orders" />
+      <PortalHeader
+        title="Orders"
+        right={
+          <IconButton label="Scan pickup" variant="solid" onPress={() => setScanning(true)}>
+            <ScanLine size={20} color="#FFFFFF" strokeWidth={2} />
+          </IconButton>
+        }
+      />
 
       <View style={styles.body}>
         {mine.map((request) => (
@@ -49,6 +59,13 @@ export function KitchenOrdersScreen() {
         onClose={() => setVerifying(null)}
         onVerified={advanceOrder}
         resolve={verifySlotCode}
+      />
+
+      <QrScannerScreen
+        open={scanning}
+        onClose={() => setScanning(false)}
+        resolve={verifySlotCode}
+        onAdvance={advanceOrder}
       />
     </Screen>
   );

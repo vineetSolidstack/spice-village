@@ -12,17 +12,27 @@ import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
 import { useCart } from '../../state/cart';
-import { CATEGORIES, DEMO_PROFILE } from '../../data/demo';
+import { DEMO_PROFILE } from '../../data/demo';
 import type { CustomerStackScreen } from '../../navigation/types';
 
 export function HomeScreen({ navigation }: CustomerStackScreen<'Home'>) {
   const { t } = useLanguage();
   const type = useType();
-  const { kitchens } = useStore();
+  const { kitchens, categories } = useStore();
   const { count } = useCart();
   const [cuisine, setCuisine] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
-  const visible = kitchens.filter((k) => !cuisine || k.cuisine === cuisine);
+  const q = query.trim().toLowerCase();
+  const visible = kitchens.filter((k) => {
+    if (cuisine && k.cuisine !== cuisine) return false;
+    if (!q) return true;
+    // Match the kitchen name, its cuisine, or any dish it serves.
+    const haystack = [k.name, k.cuisine, ...k.menu.map((d) => d.name), ...k.combos.map((d) => d.name)]
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(q);
+  });
 
   return (
     <Screen bottomInset={16}>
@@ -53,6 +63,10 @@ export function HomeScreen({ navigation }: CustomerStackScreen<'Home'>) {
         <Input
           placeholder={t.search}
           icon={<Search size={18} color={colors.textMuted} strokeWidth={1.75} />}
+          value={query}
+          onChangeText={setQuery}
+          autoCorrect={false}
+          returnKeyType="search"
         />
       </View>
 
@@ -69,7 +83,7 @@ export function HomeScreen({ navigation }: CustomerStackScreen<'Home'>) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipRow}
         >
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <Tag
               key={c}
               selected={cuisine === c}
@@ -82,7 +96,12 @@ export function HomeScreen({ navigation }: CustomerStackScreen<'Home'>) {
       </View>
 
       <View style={styles.list}>
-        <SectionLabel>{t.featured}</SectionLabel>
+        <SectionLabel>{q || cuisine ? 'Results' : t.featured}</SectionLabel>
+        {visible.length === 0 ? (
+          <Text style={[type.body(14, 600), { color: colors.textMuted, paddingVertical: 24 }]}>
+            No kitchens match that — try another dish or cuisine.
+          </Text>
+        ) : null}
         {visible.map((k) => (
           <Card
             key={k.slug}
