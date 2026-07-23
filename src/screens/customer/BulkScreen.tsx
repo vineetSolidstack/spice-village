@@ -47,7 +47,13 @@ export function BulkScreen({ navigation, route }: CustomerStackScreen<'Bulk'>) {
 
   const kitchen = getKitchen(route.params.slug);
 
-  const dishes = useMemo(() => (kitchen ? [...kitchen.combos, ...kitchen.menu] : []), [kitchen]);
+  const dishes = useMemo(
+    () =>
+      kitchen
+        ? [...kitchen.combos, ...kitchen.menu].filter((d) => d.bulkAvailable !== false)
+        : [],
+    [kitchen],
+  );
 
   const lines: BulkLine[] = useMemo(
     () =>
@@ -61,7 +67,35 @@ export function BulkScreen({ navigation, route }: CustomerStackScreen<'Bulk'>) {
 
   if (!kitchen) return null;
 
-  const canSubmit = totalUnits > 0 && date !== null;
+  // The owner can retire this feature at any time; honour that even if someone
+  // reaches the route directly from a stale link or a back-stack entry.
+  if (kitchen.bulkEnabled === false) {
+    return (
+      <Screen>
+        <AppBar title="Bulk order" onBack={() => navigation.goBack()} />
+        <View style={styles.body}>
+          <Text style={[type.body(14, 600), { color: colors.textMuted }]}>
+            {kitchen.name} isn&apos;t taking bulk orders at the moment.
+          </Text>
+          <Button variant="secondary" onPress={() => navigation.goBack()}>
+            Back to the menu
+          </Button>
+        </View>
+      </Screen>
+    );
+  }
+
+  const minUnits = kitchen.bulkMinUnits ?? 1;
+  const belowMinimum = totalUnits > 0 && totalUnits < minUnits;
+  const canSubmit = totalUnits >= minUnits && date !== null;
+
+  // Only an estimate: dishes the kitchen prices by hand have no unit price, so
+  // the real quote can differ. Never present this as a total to pay.
+  const estimate = lines.reduce((sum, l) => {
+    const dish = dishes.find((d) => d.id === l.dish_id);
+    return sum + (dish?.bulkPrice ?? 0) * l.units;
+  }, 0);
+  const allPriced = lines.length > 0 && lines.every((l) => dishes.find((d) => d.id === l.dish_id)?.bulkPrice);
 
   const onSubmit = () => {
     if (!canSubmit || !date) return;
@@ -99,8 +133,8 @@ export function BulkScreen({ navigation, route }: CustomerStackScreen<'Bulk'>) {
         ) : (
           <>
             <InfoBanner weight={600}>
-              For parties, offices &amp; events. Write units per dish — the kitchen reviews and sends a
-              custom quote, no instant checkout.
+              {kitchen.bulkNote?.trim() ||
+                'For parties, offices & events. Write units per dish — the kitchen reviews and sends a custom quote, no instant checkout.'}
             </InfoBanner>
 
             <View style={styles.dishes}>
@@ -160,6 +194,23 @@ export function BulkScreen({ navigation, route }: CustomerStackScreen<'Bulk'>) {
               onChangeText={setContact}
             />
 
+            {allPriced && estimate > 0 ? (
+              <View style={styles.estimate}>
+                <Text style={[type.body(13, 700), { color: colors.textBody }]}>
+                  Rough estimate
+                </Text>
+                <Text style={[type.body(15, 800), { color: colors.textBrand }]}>
+                  {money(estimate)}
+                </Text>
+              </View>
+            ) : null}
+
+            {belowMinimum ? (
+              <Text style={[type.body(12, 700), { color: colors.statusWarn }]}>
+                {kitchen.name} takes bulk orders from {plural(minUnits, 'unit')} upwards.
+              </Text>
+            ) : null}
+
             <Button block disabled={!canSubmit} onPress={onSubmit}>
               {totalUnits > 0 ? `Request quote · ${plural(totalUnits, 'unit')}` : 'Request quote'}
             </Button>
@@ -198,4 +249,13 @@ const styles = StyleSheet.create({
   sentState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 12 },
   sentDetail: { color: colors.textMuted, marginTop: 14, textAlign: 'center' },
   sentAction: { marginTop: 18 },
+  estimate: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
 });

@@ -50,6 +50,9 @@ type DishRow = {
   available: boolean;
   image_path: string | null;
   sort_order: number;
+  category: string | null;
+  bulk_available: boolean | null;
+  bulk_price: number | null;
 };
 
 function toDish(d: DishRow): Dish {
@@ -62,6 +65,9 @@ function toDish(d: DishRow): Dish {
     description: d.description ?? '',
     image: resolveImage(d.image_path, d.id),
     available: d.available,
+    category: d.category ?? undefined,
+    bulkAvailable: d.bulk_available !== false,
+    bulkPrice: d.bulk_price ?? undefined,
   };
 }
 
@@ -71,8 +77,8 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
   const { data, error } = await db
     .from('kitchens')
     .select(
-      'id, slug, name, cuisine, area, rating, featured, state, hero_image_path,' +
-        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, sort_order )',
+      'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, bulk_enabled, bulk_min_units, bulk_note,' +
+        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, sort_order, category, bulk_available, bulk_price )',
     )
     .eq('state', 'approved')
     .order('featured', { ascending: false });
@@ -82,6 +88,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
   type KitchenRow = {
     slug: string; name: string; cuisine: string; area: string;
     rating: number | string; featured: boolean; hero_image_path: string | null;
+    bulk_enabled: boolean | null; bulk_min_units: number | null; bulk_note: string | null;
     dishes: DishRow[] | null;
   };
 
@@ -99,6 +106,9 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
       image: resolveImage(k.hero_image_path, k.slug),
       combos: dishes.filter((d) => d.is_combo).map(toDish),
       menu: dishes.filter((d) => !d.is_combo).map(toDish),
+      bulkEnabled: k.bulk_enabled !== false,
+      bulkMinUnits: k.bulk_min_units ?? 20,
+      bulkNote: k.bulk_note ?? undefined,
     };
   });
 }
@@ -333,6 +343,51 @@ export async function saveKitchenDetails(
     return true;
   } catch (error) {
     console.warn('[spice-route] saveKitchenDetails failed', error);
+    return false;
+  }
+}
+
+/** Owner writes for the bulk-quote feature. */
+export async function saveKitchenBulkSettings(
+  slug: string,
+  patch: { bulkEnabled?: boolean; bulkMinUnits?: number; bulkNote?: string },
+): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db
+      .from('kitchens')
+      .update({
+        ...(patch.bulkEnabled !== undefined ? { bulk_enabled: patch.bulkEnabled } : {}),
+        ...(patch.bulkMinUnits !== undefined ? { bulk_min_units: patch.bulkMinUnits } : {}),
+        ...(patch.bulkNote !== undefined ? { bulk_note: patch.bulkNote } : {}),
+      })
+      .eq('slug', slug);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] saveKitchenBulkSettings failed', error);
+    return false;
+  }
+}
+
+/** Per-dish bulk availability and unit price. */
+export async function saveDishBulk(
+  dishId: string,
+  patch: { bulkAvailable?: boolean; bulkPrice?: number | null },
+): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db
+      .from('dishes')
+      .update({
+        ...(patch.bulkAvailable !== undefined ? { bulk_available: patch.bulkAvailable } : {}),
+        ...(patch.bulkPrice !== undefined ? { bulk_price: patch.bulkPrice } : {}),
+      })
+      .eq('id', dishId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] saveDishBulk failed', error);
     return false;
   }
 }

@@ -152,6 +152,12 @@ type StoreValue = {
   categories: string[];
   addCategory: (name: string) => void;
 
+  /** Owner controls for the bulk-quote feature on their kitchen. */
+  setBulkSettings: (
+    kitchenSlug: string,
+    patch: { bulkEnabled?: boolean; bulkMinUnits?: number; bulkNote?: string },
+  ) => void;
+
   decideApproval: (id: string, approved: boolean) => void;
   setKitchenState: (name: string, state: KitchenState) => void;
   setFeatured: (name: string, featured: boolean) => void;
@@ -476,6 +482,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const setBulkSettings = useCallback<StoreValue['setBulkSettings']>((kitchenSlug, patch) => {
+    setKitchens((current) =>
+      current.map((k) => (k.slug === kitchenSlug ? { ...k, ...patch } : k)),
+    );
+    if (isSupabaseConfigured) {
+      void fetchApi.saveKitchenBulkSettings(kitchenSlug, patch);
+    }
+  }, []);
+
   const addCategory = useCallback((name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -588,6 +603,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       saveWorkshop,
       categories,
       addCategory,
+      setBulkSettings,
       decideApproval,
       setKitchenState,
       setFeatured,
@@ -625,6 +641,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       saveWorkshop,
       categories,
       addCategory,
+      setBulkSettings,
       decideApproval,
       setKitchenState,
       setFeatured,

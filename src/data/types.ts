@@ -16,6 +16,12 @@ export type Dish = {
   image: MediaFill;
   /** Kitchen-side availability toggle; unavailable dishes dim in the menu. */
   available?: boolean;
+  /** Menu section this dish appears under; falls back to Combos / Meals. */
+  category?: string;
+  /** Whether this dish can be ordered in bulk. */
+  bulkAvailable?: boolean;
+  /** Per-unit bulk price; undefined means "quoted by hand". */
+  bulkPrice?: number;
 };
 
 export type Kitchen = {
@@ -30,6 +36,10 @@ export type Kitchen = {
   /** Combos are listed before meals — a deliberate product decision. */
   combos: Dish[];
   menu: Dish[];
+  /** When false the bulk-quote feature is hidden from customers entirely. */
+  bulkEnabled?: boolean;
+  bulkMinUnits?: number;
+  bulkNote?: string;
 };
 
 export type Slot = {
