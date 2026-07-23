@@ -54,7 +54,8 @@
         {
           "photosPermission": "Spice Route uses your photo library so you can add pictures of your dishes."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

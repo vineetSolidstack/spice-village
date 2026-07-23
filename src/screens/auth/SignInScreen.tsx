@@ -17,7 +17,7 @@ type Mode = 'signin' | 'signup';
 
 export function SignInScreen() {
   const type = useType();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle, googleEnabled } = useAuth();
 
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
@@ -112,6 +112,30 @@ export function SignInScreen() {
               {busy ? 'Please wait…' : signingUp ? 'Create account' : 'Sign in'}
             </Button>
 
+            {googleEnabled ? (
+              <>
+                <View style={styles.divider}>
+                  <View style={styles.line} />
+                  <Text style={[type.body(12, 600), { color: colors.textMuted }]}>or</Text>
+                  <View style={styles.line} />
+                </View>
+                <Button
+                  variant="outline"
+                  block
+                  disabled={busy}
+                  onPress={async () => {
+                    setBusy(true);
+                    setError(null);
+                    const result = await signInWithGoogle();
+                    setBusy(false);
+                    if (result.error) setError(result.error);
+                  }}
+                >
+                  Continue with Google
+                </Button>
+              </>
+            ) : null}
+
             <Button
               variant="ghost"
               block
@@ -152,5 +176,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardTitle: { marginBottom: 2 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 2 },
+  line: { flex: 1, height: 1, backgroundColor: colors.borderSubtle },
   footnote: { color: colors.textMuted, textAlign: 'center', marginTop: 8 },
 });

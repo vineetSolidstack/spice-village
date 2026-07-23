@@ -13,8 +13,22 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+
 import { supabase, isSupabaseConfigured } from '../data/supabase';
 import { registerForPush, unregisterPush } from '../lib/notifications';
+
+// Ensures the OAuth browser tab hands control back to the app after redirect.
+WebBrowser.maybeCompleteAuthSession();
+
+/**
+ * Google Sign-In is available only once it's configured — a Google OAuth
+ * client wired into Supabase, and this flag flipped on for the build. Until
+ * then the button is hidden, so people never meet a button that errors.
+ */
+export const GOOGLE_ENABLED = process.env.EXPO_PUBLIC_ENABLE_GOOGLE === 'true';
 
 export type Role = 'customer' | 'kitchen' | 'instructor' | 'super';
 
@@ -55,6 +69,10 @@ type AuthValue = {
   setRole: (role: Role) => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
+  /** One-tap Google sign-in; only meaningful when GOOGLE_ENABLED. */
+  signInWithGoogle: () => Promise<{ error: string | null }>;
+  /** Whether the Google button should be shown. */
+  googleEnabled: boolean;
   signOut: () => Promise<void>;
   /** Re-read roles, e.g. after claiming a kitchen invite. */
   refreshRoles: () => Promise<void>;
@@ -167,6 +185,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const signInWithGoogle = useCallback<AuthValue['signInWithGoogle']>(async () => {
+    if (!supabase) return { error: 'Supabase is not configured' };
+    try {
+      // The browser tab returns to the app at this deep link.
+      const redirectTo = makeRedirectUri({ scheme: 'spiceroute', path: 'auth-callback' });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error || !data?.url) return { error: error?.message ?? 'Could not start Google sign-in' };
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== 'success') return { error: null }; // user closed the tab; not an error
+
+      // supabase-js uses PKCE: the redirect carries a code we exchange for a session.
+      const { params, errorCode } = QueryParams.getQueryParams(result.url);
+      if (errorCode) return { error: errorCode };
+      if (params.code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(params.code);
+        if (exchangeError) return { error: exchangeError.message };
+      }
+      // The auth listener picks up the new session and swaps the navigator.
+      return { error: null };
+    } catch (e) {
+      return { error: String(e) };
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await unregisterPush();
@@ -183,8 +230,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadRoles]);
 
   const value = useMemo<AuthValue>(
-    () => ({ loading, user, roles, role, setRole, signIn, signUp, signOut, refreshRoles, demo }),
-    [loading, user, roles, role, setRole, signIn, signUp, signOut, refreshRoles, demo],
+    () => ({
+      loading, user, roles, role, setRole, signIn, signUp,
+      signInWithGoogle, googleEnabled: GOOGLE_ENABLED && !demo,
+      signOut, refreshRoles, demo,
+    }),
+    [loading, user, roles, role, setRole, signIn, signUp, signInWithGoogle, signOut, refreshRoles, demo],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
