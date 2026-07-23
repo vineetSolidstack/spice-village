@@ -17,13 +17,13 @@ import {
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
-import { useRole } from '../../state/role';
+import { useAuth } from '../../state/auth';
 
 export function KitchenSettingsScreen() {
   const type = useType();
   const { acceptingOrders, setAcceptingOrders, backend, business, updateBusiness, categories } =
     useStore();
-  const { setRole } = useRole();
+  const { setRole } = useAuth();
   const { showToast } = useToast();
 
   // Local draft, synced whenever the saved values change (e.g. edited in the

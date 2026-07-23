@@ -51,6 +51,7 @@ import type {
 import { NEXT_STATUS } from './types';
 import { slotCode } from '../lib/slotCode';
 import * as remote from './remote';
+import * as fetchApi from './fetch';
 import { isSupabaseConfigured } from './supabase';
 
 export type PlacedOrder = { ref: string; slotCode: string; slotTime: string; itemCount: number };
@@ -97,6 +98,11 @@ type StoreValue = {
   /** Editable business details, surfaced across every portal. */
   business: Business;
   updateBusiness: (patch: Partial<Business>) => void;
+
+  /** True while the first Supabase load is in flight. */
+  loading: boolean;
+  /** Re-read everything from the server. */
+  refresh: () => Promise<void>;
 
   kitchens: Kitchen[];
   slots: Slot[];
@@ -186,6 +192,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const setAppMode = useCallback((mode: AppMode) => {
     setAppModeState(mode);
     void AsyncStorage.setItem(APP_MODE_KEY, mode);
+    // With a backend, this is a platform-wide switch — one super-admin change
+    // reaches every customer, not just this device.
+    if (isSupabaseConfigured) void fetchApi.savePlatformMode(mode);
   }, []);
 
   const [business, setBusiness] = useState<Business>({
@@ -220,6 +229,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const next = { ...current, ...patch };
       void AsyncStorage.setItem(BUSINESS_KEY, JSON.stringify(next));
 
+      // The brand, cuisine, area, and pickup window are public kitchen details;
+      // push them to the server so every customer sees the same thing.
+      if (isSupabaseConfigured) {
+        void fetchApi.saveKitchenDetails(SHOWCASE_KITCHEN_SLUG, {
+          name: next.kitchenName,
+          cuisine: next.cuisine,
+          area: next.area,
+          pickup_window: next.pickupWindow,
+        });
+      }
+
       // The brand and cuisine are denormalised onto the kitchen the customer
       // browses, so a rename has to follow through to the storefront.
       if (patch.kitchenName !== undefined || patch.cuisine !== undefined) {
@@ -247,6 +267,68 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  const [loading, setLoading] = useState(isSupabaseConfigured);
+
+  /**
+   * Pull the catalogue and live orders from Supabase. Each query is independent
+   * so one failure (say, RLS hiding orders from a signed-out user) doesn't blank
+   * the whole app — whatever loads, lands.
+   */
+  const refresh = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    setLoading(true);
+    const results = await Promise.allSettled([
+      fetchApi.fetchKitchens(),
+      fetchApi.fetchWorkshops(),
+      fetchApi.fetchOrders(),
+      fetchApi.fetchBulkRequests(),
+      fetchApi.fetchPlatformSettings(),
+    ]);
+
+    const [kitchensR, workshopsR, ordersR, bulkR, settingsR] = results;
+
+    if (kitchensR.status === 'fulfilled' && kitchensR.value.length) {
+      setKitchens(kitchensR.value);
+      const showcase =
+        (settingsR.status === 'fulfilled' && settingsR.value?.showcaseSlug) ||
+        kitchensR.value[0].slug;
+      // Keep the business card in step with the kitchen the app showcases.
+      const shown = kitchensR.value.find((k) => k.slug === showcase);
+      if (shown) {
+        setBusiness((current) => ({
+          ...current,
+          kitchenName: shown.name,
+          cuisine: shown.cuisine,
+          area: shown.distance,
+        }));
+      }
+      const slots = await fetchApi.fetchSlots(showcase).catch(() => []);
+      if (slots.length) setSlots(slots);
+    }
+    if (workshopsR.status === 'fulfilled' && workshopsR.value.length) {
+      setWorkshops(workshopsR.value);
+    }
+    if (ordersR.status === 'fulfilled') {
+      setKitchenOrders(ordersR.value);
+      setCustomerOrders(ordersR.value);
+    }
+    if (bulkR.status === 'fulfilled' && bulkR.value.length) {
+      setBulkRequests(bulkR.value);
+    }
+    if (settingsR.status === 'fulfilled' && settingsR.value) {
+      setAppModeState(settingsR.value.appMode);
+    }
+
+    for (const r of results) {
+      if (r.status === 'rejected') console.warn('[spice-route] load failed', r.reason);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const getKitchen = useCallback(
     (slug: string) => kitchens.find((k) => k.slug === slug),
@@ -477,6 +559,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       showcaseSlug: SHOWCASE_KITCHEN_SLUG,
       business,
       updateBusiness,
+      loading,
+      refresh,
       kitchens,
       slots,
       customerOrders,
@@ -513,6 +597,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setAppMode,
       business,
       updateBusiness,
+      loading,
+      refresh,
       kitchens,
       slots,
       customerOrders,

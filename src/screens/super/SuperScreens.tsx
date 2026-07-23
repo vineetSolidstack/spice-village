@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Plus } from 'lucide-react-native';
 
 import {
   Badge,
@@ -24,7 +25,8 @@ import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
 import { SHOWCASE_KITCHEN_NAME } from '../../data/demo';
 import { plural } from '../../lib/format';
-import { useRole } from '../../state/role';
+import { useAuth } from '../../state/auth';
+import { CreateKitchenSheet } from './CreateKitchenSheet';
 import type { KitchenState, PlatformUser } from '../../data/types';
 
 /** Kitchens have no photography yet; the list uses the brand placeholder fill. */
@@ -110,12 +112,20 @@ export function SuperKitchensScreen() {
   const { managedKitchens, setKitchenState } = useStore();
   const { showToast } = useToast();
   const [tab, setTab] = useState<KitchenState>('Approved');
+  const [adding, setAdding] = useState(false);
 
   const visible = managedKitchens.filter((k) => k.state === tab);
 
   return (
     <Screen bottomInset={16}>
-      <PortalHeader title="Kitchens" />
+      <PortalHeader
+        title="Kitchens"
+        right={
+          <Button size="sm" icon={<Plus size={16} color="#FFFFFF" strokeWidth={2} />} onPress={() => setAdding(true)}>
+            Add
+          </Button>
+        }
+      />
 
       <View style={styles.body}>
         <Tabs tabs={KITCHEN_TABS} active={tab} onChange={(t) => setTab(t as KitchenState)} />
@@ -167,6 +177,8 @@ export function SuperKitchensScreen() {
           </View>
         ))}
       </View>
+
+      <CreateKitchenSheet open={adding} onClose={() => setAdding(false)} />
     </Screen>
   );
 }
@@ -260,7 +272,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export function SuperCurationScreen() {
   const type = useType();
   const { managedKitchens, setFeatured, categories, addCategory, appMode, setAppMode } = useStore();
-  const { setRole } = useRole();
+  const { setRole } = useAuth();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');

@@ -1,14 +1,20 @@
 /**
- * Root — picks the portal for the active role and applies the brand's
- * navigation theme.
+ * Root — decides what the app is, based on who is signed in.
+ *
+ * Signed out (with Supabase configured) you get the sign-in screen. Signed in,
+ * the portal follows the roles on the account: super admin sees the super-admin
+ * app, a kitchen owner sees their kitchen. Nobody can reach a portal their
+ * account doesn't hold.
  */
 import React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { NavigationContainer, type Theme } from '@react-navigation/native';
 
 import { CustomerNavigator } from './CustomerNavigator';
 import { InstructorNavigator, KitchenNavigator, SuperNavigator } from './PortalNavigators';
+import { SignInScreen } from '../screens/auth/SignInScreen';
 import { colors, displayFont, bodyFont } from '../theme';
-import { useRole } from '../state/role';
+import { useAuth } from '../state/auth';
 
 const navTheme: Theme = {
   dark: false,
@@ -29,14 +35,29 @@ const navTheme: Theme = {
 };
 
 export function RootNavigator() {
-  const { role } = useRole();
+  const { loading, user, role } = useAuth();
 
   return (
     <NavigationContainer theme={navTheme}>
-      {role === 'customer' ? <CustomerNavigator /> : null}
-      {role === 'kitchen' ? <KitchenNavigator /> : null}
-      {role === 'instructor' ? <InstructorNavigator /> : null}
-      {role === 'super' ? <SuperNavigator /> : null}
+      {loading ? (
+        <View style={styles.splash}>
+          <ActivityIndicator color={colors.actionPrimary} />
+        </View>
+      ) : !user ? (
+        <SignInScreen />
+      ) : role === 'kitchen' ? (
+        <KitchenNavigator />
+      ) : role === 'instructor' ? (
+        <InstructorNavigator />
+      ) : role === 'super' ? (
+        <SuperNavigator />
+      ) : (
+        <CustomerNavigator />
+      )}
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  splash: { flex: 1, backgroundColor: colors.surfacePage, alignItems: 'center', justifyContent: 'center' },
+});

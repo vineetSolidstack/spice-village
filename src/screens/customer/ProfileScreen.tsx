@@ -4,12 +4,14 @@
  */
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Bell, ChefHat, ChevronRight, Globe, Receipt } from 'lucide-react-native';
+import { Bell, ChefHat, ChevronRight, Globe, KeyRound, Receipt } from 'lucide-react-native';
 
 import {
   Avatar,
   Button,
   Dialog,
+  Input,
+  useToast,
   LanguagePicker,
   PortalHeader,
   Screen,
@@ -18,9 +20,9 @@ import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
-import { DEMO_PROFILE } from '../../data/demo';
 import { plural } from '../../lib/format';
-import { ROLE_LABELS, useRole, type Role } from '../../state/role';
+import { ROLE_LABELS, useAuth, type Role } from '../../state/auth';
+import { claimKitchenInvite } from '../../data/fetch';
 
 const PARTNER_ROLES: Role[] = ['kitchen', 'instructor', 'super'];
 
@@ -34,14 +36,39 @@ const NOTIFICATIONS = [
 export function ProfileScreen() {
   const { t, language, setLanguage } = useLanguage();
   const type = useType();
-  const { setRole } = useRole();
-  const { bookings } = useStore();
+  const { setRole, roles, user, signOut, demo, refreshRoles } = useAuth();
+  const { bookings, refresh } = useStore();
+  const { showToast } = useToast();
   const [switching, setSwitching] = useState(false);
   const [showBookings, setShowBookings] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [code, setCode] = useState('');
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimBusy, setClaimBusy] = useState(false);
 
-  // The signed-in demo customer's workshop bookings.
-  const myBookings = bookings.filter((b) => b.attendee === DEMO_PROFILE.customer.name);
+  const onClaim = async () => {
+    if (!code.trim() || claimBusy) return;
+    setClaimBusy(true);
+    setClaimError(null);
+    const result = await claimKitchenInvite(code.trim());
+    setClaimBusy(false);
+    if (!result) {
+      setClaimError('That code is not valid, or it has already been used.');
+      return;
+    }
+    setClaiming(false);
+    setCode('');
+    // The account just gained the kitchen_owner role — re-read it so the
+    // portal switcher offers the kitchen immediately.
+    await refreshRoles();
+    void refresh();
+    showToast(`${result.name} is yours — switch to the kitchen portal`, 'info');
+  };
+
+  const myBookings = bookings.filter((b) => b.attendee === (user?.name ?? ''));
+  // Partner portals this account is actually entitled to open.
+  const availablePortals = PARTNER_ROLES.filter((r) => roles.includes(r));
 
   const rows = [
     {
@@ -54,11 +81,24 @@ export function ProfileScreen() {
       label: t.notif,
       onPress: () => setShowNotif(true),
     },
-    {
-      icon: <ChefHat size={20} color={colors.textBrand} strokeWidth={1.75} />,
-      label: t.becomePartner,
-      onPress: () => setSwitching(true),
-    },
+    ...(demo || roles.includes('kitchen')
+      ? []
+      : [
+          {
+            icon: <KeyRound size={20} color={colors.textBrand} strokeWidth={1.75} />,
+            label: 'Claim a kitchen',
+            onPress: () => setClaiming(true),
+          },
+        ]),
+    ...(availablePortals.length
+      ? [
+          {
+            icon: <ChefHat size={20} color={colors.textBrand} strokeWidth={1.75} />,
+            label: 'Switch portal',
+            onPress: () => setSwitching(true),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -67,11 +107,11 @@ export function ProfileScreen() {
 
       <View style={styles.body}>
         <View style={[styles.identity, shadow.card]}>
-          <Avatar name={DEMO_PROFILE.customer.name} size={52} />
+          <Avatar name={user?.name ?? 'Guest'} size={52} />
           <View>
-            <Text style={type.display(17, 700)}>{DEMO_PROFILE.customer.name}</Text>
+            <Text style={type.display(17, 700)}>{user?.name ?? 'Guest'}</Text>
             <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
-              {DEMO_PROFILE.customer.email}
+              {user?.email ?? ''}
             </Text>
           </View>
         </View>
@@ -98,6 +138,12 @@ export function ProfileScreen() {
           </View>
           <LanguagePicker value={language} onChange={setLanguage} />
         </View>
+
+        {demo ? null : (
+          <Button variant="ghost" block onPress={() => void signOut()}>
+            Sign out
+          </Button>
+        )}
       </View>
 
       <Dialog
@@ -106,10 +152,10 @@ export function ProfileScreen() {
         title="Open a partner portal"
       >
         <Text style={[type.body(13, 600), styles.dialogHint]}>
-          Partner portals use plain functional copy and their own navigation.
+          You hold these roles on this account.
         </Text>
         <View style={styles.roleList}>
-          {PARTNER_ROLES.map((role) => (
+          {availablePortals.map((role) => (
             <Button
               key={role}
               variant="secondary"
@@ -123,6 +169,36 @@ export function ProfileScreen() {
             </Button>
           ))}
         </View>
+      </Dialog>
+
+      <Dialog
+        open={claiming}
+        onClose={() => setClaiming(false)}
+        title="Claim a kitchen"
+        footer={
+          <>
+            <Button variant="ghost" onPress={() => setClaiming(false)}>
+              Cancel
+            </Button>
+            <Button disabled={!code.trim() || claimBusy} onPress={() => void onClaim()}>
+              {claimBusy ? 'Checking…' : 'Claim'}
+            </Button>
+          </>
+        }
+      >
+        <Text style={[type.body(13, 600), styles.dialogHint]}>
+          Enter the invite code your Spice Route admin sent you.
+        </Text>
+        <Input
+          label="Invite code"
+          placeholder="A1B2C3"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          value={code}
+          onChangeText={setCode}
+          error={claimError ?? undefined}
+          onSubmitEditing={() => void onClaim()}
+        />
       </Dialog>
 
       <Dialog open={showBookings} onClose={() => setShowBookings(false)} title={t.bookings}>

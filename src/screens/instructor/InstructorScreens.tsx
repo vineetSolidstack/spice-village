@@ -23,7 +23,7 @@ import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
 import { INSTRUCTOR_MONTH_EARNINGS, INSTRUCTOR_WORKSHOP_IDS } from '../../data/demo';
 import { money, plural } from '../../lib/format';
-import { useRole } from '../../state/role';
+import { useAuth } from '../../state/auth';
 import { blankWorkshop, WorkshopEditorSheet } from './WorkshopEditorSheet';
 import type { Workshop, WorkshopBooking } from '../../data/types';
 
@@ -160,7 +160,7 @@ export function InstructorWorkshopsScreen() {
 
 export function InstructorBookingsScreen() {
   const { bookings } = useStore();
-  const { setRole } = useRole();
+  const { setRole } = useAuth();
 
   return (
     <Screen bottomInset={16}>

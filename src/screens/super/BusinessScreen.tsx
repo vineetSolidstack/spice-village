@@ -24,12 +24,12 @@ import {
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
-import { useRole } from '../../state/role';
+import { useAuth } from '../../state/auth';
 
 export function SuperBusinessScreen() {
   const type = useType();
   const { business, updateBusiness, categories, appMode } = useStore();
-  const { setRole } = useRole();
+  const { setRole } = useAuth();
   const { showToast } = useToast();
 
   // Local draft so typing doesn't rewrite global state on every keystroke.

@@ -14,7 +14,7 @@ import { ToastProvider } from './src/components';
 import { LanguageProvider } from './src/i18n';
 import { StoreProvider } from './src/data/store';
 import { CartProvider } from './src/state/cart';
-import { RoleProvider } from './src/state/role';
+import { AuthProvider } from './src/state/auth';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { colors, useFonts } from './src/theme';
 
@@ -32,12 +32,12 @@ export default function App() {
       <LanguageProvider>
         <StoreProvider>
           <CartProvider>
-            <RoleProvider>
+            <AuthProvider>
               <ToastProvider>
                 <StatusBar style="dark" />
                 <RootNavigator />
               </ToastProvider>
-            </RoleProvider>
+            </AuthProvider>
           </CartProvider>
         </StoreProvider>
       </LanguageProvider>
