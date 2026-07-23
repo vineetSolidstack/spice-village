@@ -60,8 +60,15 @@ export function KitchenSettingsScreen() {
 
         <View style={styles.divider} />
 
+        {/*
+          Be precise here rather than flattering: with credentials set, orders
+          and bookings are written to Supabase, but every screen still *reads*
+          the bundled demo data until the fetch layer lands.
+        */}
         <Text style={[type.body(12, 600), styles.backendNote]}>
-          Data source: {backend === 'supabase' ? 'Supabase' : 'local demo data'}
+          {backend === 'supabase'
+            ? 'Supabase: writes only — screens still read bundled demo data'
+            : 'Data source: local demo data'}
         </Text>
 
         <Button variant="secondary" block onPress={() => setRole('customer')}>
