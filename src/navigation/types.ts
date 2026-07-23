@@ -51,6 +51,7 @@ export type OrderStackScreen<T extends keyof OrderStackParamList> = CompositeScr
 
 export type KitchenTabParamList = {
   Dashboard: undefined;
+  Messages: undefined;
   Bulk: undefined;
   Orders: undefined;
   Slots: undefined;

@@ -2,7 +2,7 @@
  * Profile — avatar card, action rows, the language picker, and the switch into
  * the partner portals.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Bell, ChefHat, ChevronRight, Globe, KeyRound, Receipt } from 'lucide-react-native';
 
@@ -11,6 +11,7 @@ import {
   Button,
   Dialog,
   Input,
+  Switch,
   useToast,
   LanguagePicker,
   PortalHeader,
@@ -22,7 +23,7 @@ import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
 import { plural } from '../../lib/format';
 import { ROLE_LABELS, useAuth, type Role } from '../../state/auth';
-import { claimKitchenInvite } from '../../data/fetch';
+import { claimKitchenInvite, fetchMarketingOptIn, setMarketingOptIn } from '../../data/fetch';
 
 const PARTNER_ROLES: Role[] = ['kitchen', 'instructor', 'super'];
 
@@ -46,6 +47,19 @@ export function ProfileScreen() {
   const [code, setCode] = useState('');
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimBusy, setClaimBusy] = useState(false);
+  const [offers, setOffers] = useState(true);
+
+  // Marketing preference lives on the profile, so it follows the account.
+  useEffect(() => {
+    if (demo) return;
+    let cancelled = false;
+    void fetchMarketingOptIn().then((v) => {
+      if (!cancelled) setOffers(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [demo]);
 
   const onClaim = async () => {
     if (!code.trim() || claimBusy) return;
@@ -221,6 +235,25 @@ export function ProfileScreen() {
       </Dialog>
 
       <Dialog open={showNotif} onClose={() => setShowNotif(false)} title={t.notif}>
+        {demo ? null : (
+          <View style={styles.prefRow}>
+            <View style={styles.prefText}>
+              <Text style={type.body(14, 700)}>Offers and news</Text>
+              <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+                Order updates always come through, whatever you choose here.
+              </Text>
+            </View>
+            <Switch
+              checked={offers}
+              onChange={(value) => {
+                setOffers(value);
+                void setMarketingOptIn(value);
+                showToast(value ? 'You’ll hear about offers' : 'Offers turned off', 'info');
+              }}
+            />
+          </View>
+        )}
+
         <View style={styles.feed}>
           {NOTIFICATIONS.map((n) => (
             <View key={n.id} style={styles.feedRow}>
@@ -272,4 +305,14 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderSubtle,
   },
   notifHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  prefRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingBottom: 14,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+  },
+  prefText: { flex: 1 },
 });

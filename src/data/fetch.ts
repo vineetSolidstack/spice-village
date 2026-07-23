@@ -497,3 +497,159 @@ export async function claimKitchenInvite(code: string): Promise<{ name: string }
     return null;
   }
 }
+
+/* ------------------------------------------------------------ campaigns -- */
+
+export type CampaignAudience = 'all' | 'my_customers' | 'lapsed';
+export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
+
+export type Campaign = {
+  id: string;
+  title: string;
+  body: string;
+  audience: CampaignAudience;
+  status: CampaignStatus;
+  scheduledAt: string | null;
+  sentAt: string | null;
+  sentCount: number;
+};
+
+type CampaignRow = {
+  id: string; title: string; body: string; audience: CampaignAudience;
+  status: CampaignStatus; scheduled_at: string | null; sent_at: string | null;
+  sent_count: number;
+};
+
+/** Campaigns for the caller's kitchen, newest first. */
+export async function fetchCampaigns(): Promise<Campaign[]> {
+  const db = requireSupabase();
+  const { data, error } = await db
+    .from('campaigns')
+    .select('id, title, body, audience, status, scheduled_at, sent_at, sent_count')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return ((data ?? []) as unknown as CampaignRow[]).map((c) => ({
+    id: c.id,
+    title: c.title,
+    body: c.body,
+    audience: c.audience,
+    status: c.status,
+    scheduledAt: c.scheduled_at,
+    sentAt: c.sent_at,
+    sentCount: c.sent_count,
+  }));
+}
+
+/** How many devices an audience would reach right now. */
+export async function fetchCampaignReach(
+  kitchenSlug: string,
+  audience: CampaignAudience,
+): Promise<number> {
+  try {
+    const db = requireSupabase();
+    const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
+    const { data, error } = await db.rpc('campaign_reach', {
+      p_kitchen: (kitchen as { id?: string } | null)?.id ?? null,
+      p_audience: audience,
+    });
+    if (error) throw error;
+    return typeof data === 'number' ? data : 0;
+  } catch (error) {
+    console.warn('[spice-route] campaign_reach failed', error);
+    return 0;
+  }
+}
+
+/** Create a campaign as a draft, or scheduled when a time is given. */
+export async function createCampaign(input: {
+  kitchenSlug: string;
+  title: string;
+  body: string;
+  audience: CampaignAudience;
+  scheduledAt?: string | null;
+}): Promise<string | null> {
+  try {
+    const db = requireSupabase();
+    const { data: kitchen } = await db
+      .from('kitchens').select('id').eq('slug', input.kitchenSlug).maybeSingle();
+    const { data: session } = await db.auth.getUser();
+    const userId = session.user?.id;
+    if (!userId) throw new Error('Not signed in');
+
+    const { data, error } = await db
+      .from('campaigns')
+      .insert({
+        kitchen_id: (kitchen as { id?: string } | null)?.id ?? null,
+        created_by: userId,
+        title: input.title,
+        body: input.body,
+        audience: input.audience,
+        status: input.scheduledAt ? 'scheduled' : 'draft',
+        scheduled_at: input.scheduledAt ?? null,
+      })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return (data as { id: string }).id;
+  } catch (error) {
+    console.warn('[spice-route] createCampaign failed', error);
+    return null;
+  }
+}
+
+/** Send immediately. Returns how many devices it went to, or null on failure. */
+export async function sendCampaign(id: string): Promise<number | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('send_campaign', { p_id: id });
+    if (error) throw error;
+    return typeof data === 'number' ? data : 0;
+  } catch (error) {
+    console.warn('[spice-route] send_campaign failed', error);
+    return null;
+  }
+}
+
+export async function deleteCampaign(id: string): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.from('campaigns').delete().eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] deleteCampaign failed', error);
+    return false;
+  }
+}
+
+/** Customer-facing marketing opt-out. Order updates are unaffected. */
+export async function setMarketingOptIn(optIn: boolean): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { data: session } = await db.auth.getUser();
+    const userId = session.user?.id;
+    if (!userId) throw new Error('Not signed in');
+    const { error } = await db.from('profiles').update({ marketing_opt_in: optIn }).eq('id', userId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] setMarketingOptIn failed', error);
+    return false;
+  }
+}
+
+export async function fetchMarketingOptIn(): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { data: session } = await db.auth.getUser();
+    const userId = session.user?.id;
+    if (!userId) return true;
+    const { data, error } = await db
+      .from('profiles').select('marketing_opt_in').eq('id', userId).maybeSingle();
+    if (error) throw error;
+    return (data as { marketing_opt_in?: boolean } | null)?.marketing_opt_in !== false;
+  } catch {
+    return true;
+  }
+}

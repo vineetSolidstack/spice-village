@@ -17,6 +17,7 @@ import {
   UtensilsCrossed,
   Users,
   PackageOpen,
+  Megaphone,
 } from 'lucide-react-native';
 
 import { KitchenDashboardScreen } from '../screens/kitchen/DashboardScreen';
@@ -25,6 +26,7 @@ import { KitchenSlotsScreen } from '../screens/kitchen/SlotsScreen';
 import { KitchenMenuScreen } from '../screens/kitchen/MenuScreen';
 import { KitchenSettingsScreen } from '../screens/kitchen/SettingsScreen';
 import { KitchenBulkScreen } from '../screens/kitchen/BulkSettingsScreen';
+import { KitchenCampaignsScreen } from '../screens/kitchen/CampaignsScreen';
 import {
   InstructorBookingsScreen,
   InstructorDashboardScreen,
@@ -83,6 +85,15 @@ export function KitchenNavigator() {
         options={{
           tabBarIcon: ({ color, size }) => (
             <UtensilsCrossed size={size} color={color} strokeWidth={ADMIN_STROKE} />
+          ),
+        }}
+      />
+      <KitchenTab.Screen
+        name="Messages"
+        component={KitchenCampaignsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Megaphone size={size} color={color} strokeWidth={ADMIN_STROKE} />
           ),
         }}
       />
