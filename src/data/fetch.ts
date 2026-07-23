@@ -9,7 +9,7 @@
  * A real upload flow can swap `resolveImage` for a signed Storage URL.
  */
 import { requireSupabase } from './supabase';
-import { asset, gradient, type MediaFill } from '../components/Media';
+import { asset, gradient, photo, type MediaFill } from '../components/Media';
 import { FOOD_IMAGES, FOOD_IMAGE_KEYS } from './images';
 import type {
   BulkRequest,
@@ -23,6 +23,8 @@ import type {
 
 /** Map a stored image key to a bundled photo, falling back to a warm gradient. */
 function resolveImage(key: string | null, seed: string): MediaFill {
+  // An uploaded photo is stored as its public URL.
+  if (key && /^https?:\/\//.test(key)) return photo(key);
   if (key && FOOD_IMAGES[key]) return asset(FOOD_IMAGES[key]);
   if (key === 'gradient') return gradient('#8A6A50', '#5C3A21');
   // Deterministic pick so a dish doesn't change photo between loads.
@@ -343,6 +345,74 @@ export async function saveKitchenDetails(
     return true;
   } catch (error) {
     console.warn('[spice-route] saveKitchenDetails failed', error);
+    return false;
+  }
+}
+
+/** Create or update a dish. Returns the row id so new dishes get a real uuid. */
+export async function saveDishRemote(
+  kitchenSlug: string,
+  dish: {
+    id: string; name: string; description: string; price: number; oldPrice: number;
+    veg: boolean; available?: boolean; category?: string; imageUrl?: string;
+  },
+  isCombo: boolean,
+): Promise<string | null> {
+  try {
+    const db = requireSupabase();
+    const { data: kitchen, error: kErr } = await db
+      .from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
+    if (kErr || !kitchen) throw kErr ?? new Error('Kitchen not found');
+
+    const row = {
+      kitchen_id: kitchen.id,
+      name: dish.name,
+      description: dish.description,
+      price: dish.price,
+      old_price: dish.oldPrice,
+      veg: dish.veg,
+      is_combo: isCombo,
+      available: dish.available !== false,
+      category: dish.category ?? null,
+      ...(dish.imageUrl ? { image_path: dish.imageUrl } : {}),
+    };
+
+    // A local id (created offline) is not a uuid, so treat it as an insert.
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(dish.id);
+    if (isUuid) {
+      const { error } = await db.from('dishes').update(row).eq('id', dish.id);
+      if (error) throw error;
+      return dish.id;
+    }
+    const { data, error } = await db.from('dishes').insert(row).select('id').single();
+    if (error) throw error;
+    return (data as { id: string }).id;
+  } catch (error) {
+    console.warn('[spice-route] saveDishRemote failed', error);
+    return null;
+  }
+}
+
+export async function deleteDishRemote(dishId: string): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.from('dishes').delete().eq('id', dishId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] deleteDishRemote failed', error);
+    return false;
+  }
+}
+
+export async function setDishAvailableRemote(dishId: string, available: boolean): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.from('dishes').update({ available }).eq('id', dishId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] setDishAvailableRemote failed', error);
     return false;
   }
 }

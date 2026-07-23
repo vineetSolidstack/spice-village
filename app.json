@@ -18,7 +18,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.spiceroute.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Spice Route uses the camera to scan pickup QR codes when verifying orders."
+        "NSCameraUsageDescription": "Spice Route uses the camera to scan pickup QR codes when verifying orders.",
+        "NSPhotoLibraryUsageDescription": "Spice Route uses your photo library so you can add pictures of your dishes.",
+        "NSPhotoLibraryAddUsageDescription": "Spice Route saves dish photos you capture."
       }
     },
     "android": {
@@ -30,7 +32,10 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,7 +48,13 @@
           "cameraPermission": "Spice Route uses the camera to scan pickup QR codes when verifying orders."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Spice Route uses your photo library so you can add pictures of your dishes."
+        }
+      ]
     ],
     "extra": {
       "eas": {

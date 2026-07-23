@@ -14,6 +14,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { Session } from '@supabase/supabase-js';
 
 import { supabase, isSupabaseConfigured } from '../data/supabase';
+import { registerForPush, unregisterPush } from '../lib/notifications';
 
 export type Role = 'customer' | 'kitchen' | 'instructor' | 'super';
 
@@ -111,6 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: meta?.full_name || session.user.email?.split('@')[0] || 'Guest',
       });
       await loadRoles(session);
+      // Fire and forget: a device that refuses notifications still signs in.
+      void registerForPush(session.user.id);
     },
     [loadRoles],
   );
@@ -166,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
+    await unregisterPush();
     await supabase.auth.signOut();
     setUser(null);
     setRoles([]);

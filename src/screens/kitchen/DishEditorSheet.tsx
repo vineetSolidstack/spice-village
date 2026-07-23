@@ -7,10 +7,12 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Camera, Check, ImagePlus } from 'lucide-react-native';
 
 import { Button, Checkbox, Dialog, Input, Media, Switch, VegDot } from '../../components';
-import { asset } from '../../components/Media';
+import { asset, photo as photoFill } from '../../components/Media';
+import { captureDishPhoto, pickDishPhoto, uploadDishPhoto } from '../../data/upload';
+import { useStore } from '../../data/store';
 import { colors, palette, radius } from '../../theme';
 import { useType } from '../../theme/useType';
 import { FOOD_IMAGES, FOOD_IMAGE_KEYS } from '../../data/images';
@@ -41,6 +43,7 @@ export function blankDish(): Dish {
 
 export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps) {
   const type = useType();
+  const { showcaseSlug, backend } = useStore();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -50,6 +53,10 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   const [isCombo, setIsCombo] = useState(false);
   const [available, setAvailable] = useState(true);
   const [imageKey, setImageKey] = useState(FOOD_IMAGE_KEYS[0]);
+  // A real uploaded photo wins over anything picked from the bundled library.
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [category, setCategory] = useState('');
 
   // Load the draft into the form each time the sheet opens.
   useEffect(() => {
@@ -65,6 +72,8 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     // Match the current image back to a library key if it is one of ours.
     const match = FOOD_IMAGE_KEYS.find((k) => FOOD_IMAGES[k] === (d.image as { source?: unknown }).source);
     setImageKey(match ?? FOOD_IMAGE_KEYS[0]);
+    setUploadedUrl(d.image.kind === 'photo' ? d.image.uri : null);
+    setCategory(d.category ?? '');
   }, [draft]);
 
   if (!draft) return null;
@@ -80,17 +89,30 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     onSave(
       {
         ...draft.dish,
+        category: category.trim() || undefined,
         name: name.trim(),
         description: description.trim(),
         price: priceNum,
         oldPrice: oldNum,
         veg,
         available,
-        image: asset(FOOD_IMAGES[imageKey]),
+        image: uploadedUrl ? photoFill(uploadedUrl) : asset(FOOD_IMAGES[imageKey]),
       },
       isCombo,
     );
     onClose();
+  };
+
+  const runUpload = async (take: boolean) => {
+    const picked = take ? await captureDishPhoto() : await pickDishPhoto();
+    if (!picked) return;
+    // Show it straight away; swap in the hosted URL once it lands.
+    setUploadedUrl(picked.uri);
+    if (backend !== 'supabase') return;
+    setUploading(true);
+    const url = await uploadDishPhoto(showcaseSlug, draft.dish.id, picked);
+    setUploading(false);
+    if (url) setUploadedUrl(url);
   };
 
   return (
@@ -140,7 +162,42 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
           />
         </View>
 
+        <Input
+          label="Menu section"
+          placeholder="Tiffin, Biryani, Desserts…"
+          hint="Groups this dish on the storefront; blank uses Combos / Meals"
+          value={category}
+          onChangeText={setCategory}
+          style={styles.field}
+        />
+
         <Text style={[type.body(13, 700), styles.label]}>Photo</Text>
+
+        <View style={styles.uploadRow}>
+          <Button size="sm" variant="secondary" icon={<ImagePlus size={16} color={colors.textBrand} strokeWidth={2} />} onPress={() => void runUpload(false)}>
+            {uploading ? 'Uploading…' : 'Upload photo'}
+          </Button>
+          <Button size="sm" variant="ghost" icon={<Camera size={16} color={colors.textBrand} strokeWidth={2} />} onPress={() => void runUpload(true)}>
+            Camera
+          </Button>
+        </View>
+
+        {uploadedUrl ? (
+          <View style={styles.uploadPreview}>
+            <Media fill={photoFill(uploadedUrl)} style={styles.uploadThumb} />
+            <View style={styles.uploadText}>
+              <Text style={type.body(13, 700)}>Your photo</Text>
+              <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+                {backend === 'supabase' ? 'Shown to customers' : 'Connect Supabase to store it'}
+              </Text>
+            </View>
+            <Button size="sm" variant="ghost" onPress={() => setUploadedUrl(null)}>
+              Remove
+            </Button>
+          </View>
+        ) : null}
+
+        <Text style={[type.body(12, 600), styles.libraryHint]}>Or pick from the library</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
           {FOOD_IMAGE_KEYS.map((key) => {
             const selected = key === imageKey;
@@ -189,6 +246,19 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
   priceField: { flex: 1 },
   photoRow: { gap: 8, paddingBottom: 4 },
+  uploadRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  uploadPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    padding: 10,
+    marginBottom: 10,
+  },
+  uploadThumb: { width: 56, height: 44, borderRadius: 8 },
+  uploadText: { flex: 1 },
+  libraryHint: { color: colors.textMuted, marginBottom: 8 },
   thumb: {
     width: 64,
     height: 64,

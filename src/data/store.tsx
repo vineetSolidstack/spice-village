@@ -431,6 +431,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setDishAvailability = useCallback((kitchenSlug: string, dishId: string, available: boolean) => {
+    if (isSupabaseConfigured) void fetchApi.setDishAvailableRemote(dishId, available);
     setKitchens((current) =>
       current.map((k) =>
         k.slug !== kitchenSlug
@@ -445,6 +446,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const removeDish = useCallback((kitchenSlug: string, dishId: string) => {
+    if (isSupabaseConfigured) void fetchApi.deleteDishRemote(dishId);
     setKitchens((current) =>
       current.map((k) =>
         k.slug !== kitchenSlug
@@ -461,6 +463,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const saveDish = useCallback((kitchenSlug: string, dish: Dish, isCombo: boolean) => {
     // A blank id means "create"; allocate one and append. Otherwise replace in place.
     const withId: Dish = dish.id ? dish : { ...dish, id: `d${Date.now()}` };
+
+    // Write through so the change reaches every customer, then re-read to pick
+    // up the server-allocated id for newly created dishes.
+    if (isSupabaseConfigured) {
+      void fetchApi
+        .saveDishRemote(
+          kitchenSlug,
+          {
+            id: dish.id,
+            name: withId.name,
+            description: withId.description,
+            price: withId.price,
+            oldPrice: withId.oldPrice,
+            veg: withId.veg,
+            available: withId.available,
+            category: withId.category,
+            imageUrl: withId.image.kind === 'photo' ? withId.image.uri : undefined,
+          },
+          isCombo,
+        )
+        .then((id) => {
+          if (id && !dish.id) void refresh();
+        });
+    }
     setKitchens((current) =>
       current.map((k) => {
         if (k.slug !== kitchenSlug) return k;
