@@ -13,9 +13,17 @@ import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
 import { useCart } from '../../state/cart';
 import { DEMO_PROFILE } from '../../data/demo';
+import { SingleKitchenHome } from './SingleKitchenHome';
 import type { CustomerStackScreen } from '../../navigation/types';
 
-export function HomeScreen({ navigation }: CustomerStackScreen<'Home'>) {
+export function HomeScreen(props: CustomerStackScreen<'Home'>) {
+  const { appMode } = useStore();
+  // In single-kitchen mode the whole app is one branded storefront.
+  if (appMode === 'single') return <SingleKitchenHome {...props} />;
+  return <MarketplaceHome {...props} />;
+}
+
+function MarketplaceHome({ navigation }: CustomerStackScreen<'Home'>) {
   const { t } = useLanguage();
   const type = useType();
   const { kitchens, categories } = useStore();

@@ -14,7 +14,8 @@
  * the UI, but `place_order()` re-checks capacity under a row lock and is the
  * only authority on whether an order actually fits.
  */
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   APPROVALS,
@@ -22,6 +23,7 @@ import {
   CATEGORIES,
   CUSTOMER_ORDERS,
   KITCHENS,
+  SHOWCASE_KITCHEN_SLUG,
   MANAGED_KITCHENS,
   ORDERS,
   PLATFORM_USERS,
@@ -51,9 +53,24 @@ import { isSupabaseConfigured } from './supabase';
 
 export type PlacedOrder = { ref: string; slotCode: string; slotTime: string; itemCount: number };
 
+/**
+ * How the customer app presents itself.
+ *   'single'      — one cloud kitchen (Nandhan Delight) + classes, no browsing.
+ *   'marketplace' — the full multi-kitchen marketplace.
+ * The founder flips this from the super-admin portal as the business grows.
+ */
+export type AppMode = 'single' | 'marketplace';
+const APP_MODE_KEY = 'spiceroute.appMode';
+
 type StoreValue = {
   /** Source of the data currently on screen. */
   backend: 'demo' | 'supabase';
+
+  /** Single-kitchen showcase vs. full marketplace. */
+  appMode: AppMode;
+  setAppMode: (mode: AppMode) => void;
+  /** The kitchen the app showcases in single mode. */
+  showcaseSlug: string;
 
   kitchens: Kitchen[];
   slots: Slot[];
@@ -126,6 +143,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [users] = useState<PlatformUser[]>(PLATFORM_USERS);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [categories, setCategories] = useState<string[]>(CATEGORIES);
+  // Default to the single-kitchen showcase; the founder opens the marketplace later.
+  const [appMode, setAppModeState] = useState<AppMode>('single');
+
+  // Restore the persisted mode on boot.
+  useEffect(() => {
+    let cancelled = false;
+    void AsyncStorage.getItem(APP_MODE_KEY).then((saved) => {
+      if (!cancelled && (saved === 'single' || saved === 'marketplace')) setAppModeState(saved);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setAppMode = useCallback((mode: AppMode) => {
+    setAppModeState(mode);
+    void AsyncStorage.setItem(APP_MODE_KEY, mode);
+  }, []);
 
   const getKitchen = useCallback(
     (slug: string) => kitchens.find((k) => k.slug === slug),
@@ -351,6 +386,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<StoreValue>(
     () => ({
       backend: isSupabaseConfigured ? 'supabase' : 'demo',
+      appMode,
+      setAppMode,
+      showcaseSlug: SHOWCASE_KITCHEN_SLUG,
       kitchens,
       slots,
       customerOrders,
@@ -383,6 +421,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setFeatured,
     }),
     [
+      appMode,
+      setAppMode,
       kitchens,
       slots,
       customerOrders,

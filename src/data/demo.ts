@@ -24,6 +24,14 @@ import type {
 
 export const CATEGORIES = ['South Indian', 'North Indian', 'Snacks', 'Sweets', 'Healthy'];
 
+/**
+ * The founder's own cloud kitchen. In single-kitchen ("showcase") mode the whole
+ * customer app is this one brand plus workshops; flipping to marketplace mode
+ * opens up the other kitchens. See `appMode` in the store.
+ */
+export const SHOWCASE_KITCHEN_SLUG = 'nandhan-delight';
+export const SHOWCASE_KITCHEN_NAME = 'Nandhan Delight';
+
 const dish = (
   id: string,
   name: string,
@@ -38,6 +46,27 @@ const dish = (
 const F = FOOD_IMAGES;
 
 export const KITCHENS: Kitchen[] = [
+  {
+    slug: SHOWCASE_KITCHEN_SLUG,
+    name: SHOWCASE_KITCHEN_NAME,
+    cuisine: 'South Indian',
+    distance: 'Cloud kitchen',
+    rating: 4.9,
+    featured: true,
+    image: asset(F.beef_mandi),
+    combos: [
+      dish('nd-c1', 'Nandhan special thali', 240, 300, true, 'Sambar, rasam, poriyal, curd rice, papad + sweet', asset(F.kedgeree)),
+      dish('nd-c2', 'Weekend feast box', 460, 560, false, 'Chicken biryani, chettinad curry, dessert for two', asset(F.lamb_biryani)),
+    ],
+    menu: [
+      dish('nd-1', 'Ghee podi dosa (2 pc)', 100, 120, true, 'Crisp dosa, house podi, extra ghee', asset(F.bread_omelette)),
+      dish('nd-2', 'Idli · vada combo', 80, 95, true, 'Two idlis, one medu vada, sambar & chutney', asset(F.dal_fry)),
+      dish('nd-3', 'Chettinad chicken curry', 190, 230, false, 'Slow-roasted spice masala, bone-in', asset(F.chicken_handi)),
+      dish('nd-4', 'Paneer butter masala', 180, 220, true, 'Creamy tomato gravy with soft paneer', asset(F.matar_paneer)),
+      dish('nd-5', 'Hyderabadi chicken biryani', 220, 270, false, 'Dum-cooked, saffron rice, boiled egg', asset(F.lamb_biryani)),
+      dish('nd-6', 'Filter coffee', 40, 50, true, 'Frothy, strong, brewed in brass', gradient('#8A6A50', '#5C3A21')),
+    ],
+  },
   {
     slug: 'anitas-kitchen',
     name: 'Anita’s Kitchen',
@@ -90,7 +119,7 @@ export const KITCHENS: Kitchen[] = [
   },
 ];
 
-/** Kitchen-defined pickup slots with capacity caps (demo: Anita's Kitchen). */
+/** Kitchen-defined pickup slots with capacity caps (the showcase kitchen). */
 export const SLOTS: Slot[] = [
   { digits: '500', time: '5:00 pm', capacity: 15, used: 6 },
   { digits: '515', time: '5:15 pm', capacity: 15, used: 15 },
@@ -161,14 +190,14 @@ export const ORDERS: Order[] = [
     ref: 'SR-7194',
     slotCode: '500-07',
     slotTime: '5:00 pm',
-    kitchenSlug: 'anitas-kitchen',
-    kitchenName: 'Anita’s Kitchen',
+    kitchenSlug: SHOWCASE_KITCHEN_SLUG,
+    kitchenName: SHOWCASE_KITCHEN_NAME,
     customerName: 'Priya S.',
     lines: [
-      { dishId: 'm1', name: 'Ghee dosa', quantity: 2, price: 90 },
-      { dishId: 'm4', name: 'Filter coffee', quantity: 1, price: 35 },
+      { dishId: 'nd-1', name: 'Ghee podi dosa', quantity: 2, price: 100 },
+      { dishId: 'nd-6', name: 'Filter coffee', quantity: 1, price: 40 },
     ],
-    total: 215,
+    total: 240,
     status: 'New',
     when: 'Today · pickup 5:00 pm',
   },
@@ -176,11 +205,11 @@ export const ORDERS: Order[] = [
     ref: 'SR-7191',
     slotCode: '500-03',
     slotTime: '5:00 pm',
-    kitchenSlug: 'anitas-kitchen',
-    kitchenName: 'Anita’s Kitchen',
+    kitchenSlug: SHOWCASE_KITCHEN_SLUG,
+    kitchenName: SHOWCASE_KITCHEN_NAME,
     customerName: 'Arun M.',
-    lines: [{ dishId: 'c1', name: 'Sunday tiffin combo', quantity: 1, price: 220 }],
-    total: 220,
+    lines: [{ dishId: 'nd-c1', name: 'Nandhan special thali', quantity: 1, price: 240 }],
+    total: 240,
     status: 'Preparing',
     when: 'Today · pickup 5:00 pm',
   },
@@ -188,11 +217,11 @@ export const ORDERS: Order[] = [
     ref: 'SR-7188',
     slotCode: '530-01',
     slotTime: '5:30 pm',
-    kitchenSlug: 'anitas-kitchen',
-    kitchenName: 'Anita’s Kitchen',
+    kitchenSlug: SHOWCASE_KITCHEN_SLUG,
+    kitchenName: SHOWCASE_KITCHEN_NAME,
     customerName: 'Kavya R.',
-    lines: [{ dishId: 'm2', name: 'Sambar idli bowl', quantity: 2, price: 70 }],
-    total: 140,
+    lines: [{ dishId: 'nd-2', name: 'Idli · vada combo', quantity: 2, price: 80 }],
+    total: 160,
     status: 'Ready',
     when: 'Today · pickup 5:30 pm',
   },
@@ -200,11 +229,11 @@ export const ORDERS: Order[] = [
     ref: 'SR-7180',
     slotCode: '545-11',
     slotTime: '5:45 pm',
-    kitchenSlug: 'anitas-kitchen',
-    kitchenName: 'Anita’s Kitchen',
+    kitchenSlug: SHOWCASE_KITCHEN_SLUG,
+    kitchenName: SHOWCASE_KITCHEN_NAME,
     customerName: 'Dev P.',
-    lines: [{ dishId: 'm3', name: 'Chicken chettinad', quantity: 1, price: 180 }],
-    total: 180,
+    lines: [{ dishId: 'nd-3', name: 'Chettinad chicken curry', quantity: 1, price: 190 }],
+    total: 190,
     status: 'Completed',
     when: 'Today · pickup 5:45 pm',
   },
@@ -216,14 +245,14 @@ export const CUSTOMER_ORDERS: Order[] = [
     ref: 'SR-7102',
     slotCode: '545-09',
     slotTime: '5:45 pm',
-    kitchenSlug: 'gurpreets-rasoi',
-    kitchenName: 'Gurpreet’s Rasoi',
+    kitchenSlug: SHOWCASE_KITCHEN_SLUG,
+    kitchenName: SHOWCASE_KITCHEN_NAME,
     customerName: 'Priya S.',
     lines: [
-      { dishId: 'm5', name: 'Rajma chawal thali', quantity: 1, price: 150 },
-      { dishId: 'm7', name: 'Gajar halwa cup', quantity: 1, price: 80 },
+      { dishId: 'nd-4', name: 'Paneer butter masala', quantity: 1, price: 180 },
+      { dishId: 'nd-5', name: 'Hyderabadi chicken biryani', quantity: 1, price: 220 },
     ],
-    total: 230,
+    total: 400,
     status: 'Completed',
     when: 'Tue 14 Jul',
   },
@@ -232,7 +261,7 @@ export const CUSTOMER_ORDERS: Order[] = [
 export const BULK_REQUESTS: BulkRequest[] = [
   {
     id: 'BQ-102',
-    kitchenSlug: 'anitas-kitchen',
+    kitchenSlug: SHOWCASE_KITCHEN_SLUG,
     customerName: 'Arun M.',
     contact: '98400 12345',
     what: '500 meal combos · 3 sides',
@@ -253,6 +282,7 @@ export const APPROVALS: Approval[] = [
 ];
 
 export const MANAGED_KITCHENS: ManagedKitchen[] = [
+  { name: SHOWCASE_KITCHEN_NAME, area: 'Cloud kitchen', state: 'Approved', rating: 4.9, featured: true },
   { name: 'Lakshmi’s Tiffins', area: 'Mylapore', state: 'Pending', featured: false },
   { name: 'Anita’s Kitchen', area: 'T. Nagar', state: 'Approved', rating: 4.8, featured: true },
   { name: 'Gurpreet’s Rasoi', area: 'Anna Nagar', state: 'Approved', rating: 4.6, featured: true },
@@ -269,7 +299,7 @@ export const PLATFORM_USERS: PlatformUser[] = [
 /** The signed-in demo identities each portal renders as. */
 export const DEMO_PROFILE = {
   customer: { name: 'Priya S.', email: 'priya@example.com', location: 'T. Nagar, Chennai' },
-  kitchen: { name: 'Anita’s Kitchen', slug: 'anitas-kitchen', cuisine: 'South Indian', pickupWindow: '5–7 pm' },
+  kitchen: { name: SHOWCASE_KITCHEN_NAME, slug: SHOWCASE_KITCHEN_SLUG, cuisine: 'South Indian', pickupWindow: '5–7 pm' },
   instructor: { name: 'Chef Anita R.', verified: true },
 };
 

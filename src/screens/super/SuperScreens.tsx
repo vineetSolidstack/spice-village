@@ -22,6 +22,7 @@ import { gradient } from '../../components/Media';
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
+import { SHOWCASE_KITCHEN_NAME } from '../../data/demo';
 import { plural } from '../../lib/format';
 import { useRole } from '../../state/role';
 import type { KitchenState, PlatformUser } from '../../data/types';
@@ -258,13 +259,14 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 export function SuperCurationScreen() {
   const type = useType();
-  const { managedKitchens, setFeatured, categories, addCategory } = useStore();
+  const { managedKitchens, setFeatured, categories, addCategory, appMode, setAppMode } = useStore();
   const { setRole } = useRole();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
 
   const approved = managedKitchens.filter((k) => k.state === 'Approved');
+  const marketplaceOn = appMode === 'marketplace';
 
   const onAdd = () => {
     const trimmed = name.trim();
@@ -277,9 +279,45 @@ export function SuperCurationScreen() {
 
   return (
     <Screen bottomInset={16}>
-      <PortalHeader title="Categories & featured" />
+      <PortalHeader title="Storefront & curation" />
 
       <View style={styles.body}>
+        {/* The launch switch: run as one cloud kitchen now, open the marketplace later. */}
+        <View>
+          <SectionLabel style={styles.groupLabel}>Storefront mode</SectionLabel>
+          <View style={[styles.modeCard, shadow.card]}>
+            <View style={styles.modeHead}>
+              <View style={styles.modeText}>
+                <Text style={type.body(15, 700)}>Marketplace mode</Text>
+                <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+                  {marketplaceOn
+                    ? 'Customers browse every approved kitchen.'
+                    : `Customers see only ${SHOWCASE_KITCHEN_NAME} and classes.`}
+                </Text>
+              </View>
+              <Switch
+                checked={marketplaceOn}
+                onChange={(value) => {
+                  setAppMode(value ? 'marketplace' : 'single');
+                  showToast(
+                    value ? 'Marketplace opened to all kitchens' : `Showing ${SHOWCASE_KITCHEN_NAME} only`,
+                    'info',
+                  );
+                }}
+              />
+            </View>
+
+            <View style={styles.modeStatus}>
+              <Badge tone={marketplaceOn ? 'success' : 'brand'}>
+                {marketplaceOn ? 'Marketplace' : 'Single kitchen'}
+              </Badge>
+              <Text style={[type.body(12, 600), styles.modeNote]}>
+                Takes effect immediately on the customer Home tab — no new app release needed.
+              </Text>
+            </View>
+          </View>
+        </View>
+
         <View>
           <SectionLabel style={styles.groupLabel}>Cuisine categories</SectionLabel>
           <View style={styles.categoryRow}>
@@ -394,6 +432,16 @@ const styles = StyleSheet.create({
   featuredDivider: { borderTopWidth: 1, borderTopColor: colors.borderSubtle },
   featuredName: { flex: 1 },
   divider: { height: 1, backgroundColor: colors.borderSubtle, marginTop: 6 },
+  modeCard: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: layout.cardPadding,
+    gap: 12,
+  },
+  modeHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  modeText: { flex: 1 },
+  modeStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  modeNote: { flex: 1, color: colors.textMuted },
   detailList: { gap: 2 },
   detailRow: {
     flexDirection: 'row',
