@@ -138,9 +138,33 @@ helpers so this happens automatically.
 - Food imagery is gradient placeholders throughout, as in the prototypes. There
   is no logo — "Spice Route" is set in Baloo 2 wherever a mark would go.
 
+## Imagery
+
+Real dish photos are bundled under [assets/food/](assets/food/) — 24 Indian and
+pan-Asian plates sourced from [TheMealDB](https://www.themealdb.com)'s free
+catalogue — mapped onto kitchens, dishes, and workshops via
+[src/data/images.ts](src/data/images.ts). A warm gradient still stands in for the
+handful of items with no matching photo (filter coffee, gajar halwa). These are
+**demo assets**: in production each kitchen uploads its own photography to
+Supabase Storage, and `Media` already accepts a remote `photo(uri)` fill for that.
+
+## Editors and tools
+
+- **Kitchen → Menu**: add / edit / delete dishes, with a photo picker drawn from
+  the bundled library, veg and combo toggles, and price validation.
+- **Instructor → Workshops**: create / edit workshops and their sessions, each
+  with its own seat cap.
+- **Super admin → Curation**: add cuisine categories (they appear on the customer
+  home filter); **Users** opens a per-user detail sheet.
+- **Kitchen → Orders → scan icon**: a full-screen QR scanner that resolves any
+  scanned slot code to today's order and advances it, with a manual-entry
+  fallback. The per-order "Verify QR & complete" sheet remains for the case where
+  staff act on one specific Ready order.
+- **Home search** filters kitchens by name, cuisine, or dish.
+
 ## Not built
 
 Deliberately left as stubs, each surfaced with a toast rather than a dead
-control: the menu item editor, workshop editor, category editor, super-admin
-user detail, and push notifications (`expo-notifications` is installed and
-configured but no registration flow is wired).
+control: kitchen settings persistence, and push notifications
+(`expo-notifications` is installed and configured, and Profile → Notifications
+shows a demo feed, but no device-registration / send flow is wired).
