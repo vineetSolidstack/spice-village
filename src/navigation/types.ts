@@ -79,6 +79,7 @@ export type InstructorTabScreen<T extends keyof InstructorTabParamList> = Bottom
 
 export type SuperTabParamList = {
   Approvals: undefined;
+  Business: undefined;
   Kitchens: undefined;
   Users: undefined;
   Curation: undefined;

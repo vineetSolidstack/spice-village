@@ -22,8 +22,10 @@ import {
   BULK_REQUESTS,
   CATEGORIES,
   CUSTOMER_ORDERS,
+  DEMO_PROFILE,
   KITCHENS,
   SHOWCASE_KITCHEN_SLUG,
+  SHOWCASE_KITCHEN_NAME,
   MANAGED_KITCHENS,
   ORDERS,
   PLATFORM_USERS,
@@ -62,6 +64,26 @@ export type PlacedOrder = { ref: string; slotCode: string; slotTime: string; ite
 export type AppMode = 'single' | 'marketplace';
 const APP_MODE_KEY = 'spiceroute.appMode';
 
+/**
+ * Everything about the business that the founder should be able to change from
+ * inside the app rather than by editing code: the brand, where it serves, when
+ * it hands orders over, and who teaches the classes.
+ */
+export type Business = {
+  kitchenName: string;
+  /** Shown to customers as the location line, e.g. "T. Nagar, Chennai". */
+  area: string;
+  cuisine: string;
+  /** Free text shown on every order, e.g. "5–7 pm". */
+  pickupWindow: string;
+  /** Host name on classes. */
+  instructorName: string;
+  /** Contact number surfaced on bulk quotes. */
+  phone: string;
+};
+
+const BUSINESS_KEY = 'spiceroute.business';
+
 type StoreValue = {
   /** Source of the data currently on screen. */
   backend: 'demo' | 'supabase';
@@ -71,6 +93,10 @@ type StoreValue = {
   setAppMode: (mode: AppMode) => void;
   /** The kitchen the app showcases in single mode. */
   showcaseSlug: string;
+
+  /** Editable business details, surfaced across every portal. */
+  business: Business;
+  updateBusiness: (patch: Partial<Business>) => void;
 
   kitchens: Kitchen[];
   slots: Slot[];
@@ -160,6 +186,66 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const setAppMode = useCallback((mode: AppMode) => {
     setAppModeState(mode);
     void AsyncStorage.setItem(APP_MODE_KEY, mode);
+  }, []);
+
+  const [business, setBusiness] = useState<Business>({
+    kitchenName: SHOWCASE_KITCHEN_NAME,
+    area: DEMO_PROFILE.customer.location,
+    cuisine: DEMO_PROFILE.kitchen.cuisine,
+    pickupWindow: DEMO_PROFILE.kitchen.pickupWindow,
+    instructorName: DEMO_PROFILE.instructor.name,
+    phone: '',
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    void AsyncStorage.getItem(BUSINESS_KEY).then((saved) => {
+      if (cancelled || !saved) return;
+      try {
+        // Merge rather than replace, so fields added in later versions keep
+        // their defaults instead of coming back undefined.
+        const parsed = JSON.parse(saved) as Partial<Business>;
+        setBusiness((current) => ({ ...current, ...parsed }));
+      } catch {
+        // A corrupt entry shouldn't stop the app booting; defaults stand.
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const updateBusiness = useCallback((patch: Partial<Business>) => {
+    setBusiness((current) => {
+      const next = { ...current, ...patch };
+      void AsyncStorage.setItem(BUSINESS_KEY, JSON.stringify(next));
+
+      // The brand and cuisine are denormalised onto the kitchen the customer
+      // browses, so a rename has to follow through to the storefront.
+      if (patch.kitchenName !== undefined || patch.cuisine !== undefined) {
+        setKitchens((list) =>
+          list.map((k) =>
+            k.slug === SHOWCASE_KITCHEN_SLUG
+              ? { ...k, name: next.kitchenName, cuisine: next.cuisine }
+              : k,
+          ),
+        );
+        setManagedKitchens((list) =>
+          list.map((k) => (k.name === current.kitchenName ? { ...k, name: next.kitchenName } : k)),
+        );
+      }
+
+      // Classes carry the host's name; rename the ones this instructor owns.
+      if (patch.instructorName !== undefined) {
+        setWorkshops((list) =>
+          list.map((w) =>
+            w.host === current.instructorName ? { ...w, host: next.instructorName } : w,
+          ),
+        );
+      }
+
+      return next;
+    });
   }, []);
 
   const getKitchen = useCallback(
@@ -389,6 +475,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       appMode,
       setAppMode,
       showcaseSlug: SHOWCASE_KITCHEN_SLUG,
+      business,
+      updateBusiness,
       kitchens,
       slots,
       customerOrders,
@@ -423,6 +511,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [
       appMode,
       setAppMode,
+      business,
+      updateBusiness,
       kitchens,
       slots,
       customerOrders,

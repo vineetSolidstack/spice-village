@@ -21,7 +21,7 @@ import {
 import { colors, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
-import { DEMO_PROFILE, INSTRUCTOR_MONTH_EARNINGS, INSTRUCTOR_WORKSHOP_IDS } from '../../data/demo';
+import { INSTRUCTOR_MONTH_EARNINGS, INSTRUCTOR_WORKSHOP_IDS } from '../../data/demo';
 import { money, plural } from '../../lib/format';
 import { useRole } from '../../state/role';
 import { blankWorkshop, WorkshopEditorSheet } from './WorkshopEditorSheet';
@@ -32,9 +32,9 @@ import type { Workshop, WorkshopBooking } from '../../data/types';
  * they create in this session (which carry their name as host).
  */
 function useMyWorkshops() {
-  const { workshops } = useStore();
+  const { workshops, business } = useStore();
   return workshops.filter(
-    (w) => INSTRUCTOR_WORKSHOP_IDS.includes(w.id) || w.host === DEMO_PROFILE.instructor.name,
+    (w) => INSTRUCTOR_WORKSHOP_IDS.includes(w.id) || w.host === business.instructorName,
   );
 }
 
@@ -42,7 +42,7 @@ function useMyWorkshops() {
 
 export function InstructorDashboardScreen() {
   const mine = useMyWorkshops();
-  const { bookings } = useStore();
+  const { bookings, business } = useStore();
 
   const sessions = mine.flatMap((w) => w.sessions);
   const seatsBooked = sessions.reduce((sum, s) => sum + s.booked, 0);
@@ -52,8 +52,8 @@ export function InstructorDashboardScreen() {
   return (
     <Screen bottomInset={16}>
       <PortalHeader
-        title={DEMO_PROFILE.instructor.name}
-        right={DEMO_PROFILE.instructor.verified ? <Badge tone="success">Verified</Badge> : null}
+        title={business.instructorName}
+        right={<Badge tone="success">Verified</Badge>}
       />
 
       <View style={styles.body}>
@@ -83,7 +83,7 @@ export function InstructorDashboardScreen() {
 export function InstructorWorkshopsScreen() {
   const type = useType();
   const mine = useMyWorkshops();
-  const { saveWorkshop } = useStore();
+  const { saveWorkshop, business } = useStore();
   const { showToast } = useToast();
   const [editing, setEditing] = useState<Workshop | null>(null);
 
@@ -95,7 +95,7 @@ export function InstructorWorkshopsScreen() {
           <Button
             size="sm"
             icon={<Plus size={16} color="#FFFFFF" strokeWidth={2} />}
-            onPress={() => setEditing(blankWorkshop())}
+            onPress={() => setEditing(blankWorkshop(business.instructorName))}
           >
             New
           </Button>

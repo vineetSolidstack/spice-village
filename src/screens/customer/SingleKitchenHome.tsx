@@ -37,7 +37,7 @@ const TAB_ORDER = ['Combos', 'Meals'] as const;
 export function SingleKitchenHome({ navigation }: CustomerStackScreen<'Home'>) {
   const { t } = useLanguage();
   const type = useType();
-  const { getKitchen, showcaseSlug } = useStore();
+  const { getKitchen, showcaseSlug, business } = useStore();
   const cart = useCart();
   const [tab, setTab] = useState<string>(TAB_ORDER[0]);
 
@@ -77,7 +77,7 @@ export function SingleKitchenHome({ navigation }: CustomerStackScreen<'Home'>) {
                 {kitchen.rating} · {kitchen.cuisine} ·{' '}
               </Text>
               <MapPin size={13} color="rgba(255,248,240,0.9)" strokeWidth={1.75} />
-              <Text style={[type.body(13, 600), styles.heroMetaText]}> {kitchen.distance}</Text>
+              <Text style={[type.body(13, 600), styles.heroMetaText]}> {business.area}</Text>
             </View>
           </LinearGradient>
         </Media>

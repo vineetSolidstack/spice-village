@@ -12,7 +12,6 @@ import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
 import { useCart } from '../../state/cart';
-import { DEMO_PROFILE } from '../../data/demo';
 import { SingleKitchenHome } from './SingleKitchenHome';
 import type { CustomerStackScreen } from '../../navigation/types';
 
@@ -26,7 +25,7 @@ export function HomeScreen(props: CustomerStackScreen<'Home'>) {
 function MarketplaceHome({ navigation }: CustomerStackScreen<'Home'>) {
   const { t } = useLanguage();
   const type = useType();
-  const { kitchens, categories } = useStore();
+  const { kitchens, categories, business } = useStore();
   const { count } = useCart();
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -50,7 +49,7 @@ function MarketplaceHome({ navigation }: CustomerStackScreen<'Home'>) {
           <View style={styles.location}>
             <MapPin size={14} color={colors.textMuted} strokeWidth={1.75} />
             <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
-              {DEMO_PROFILE.customer.location}
+              {business.area}
             </Text>
           </View>
         </View>

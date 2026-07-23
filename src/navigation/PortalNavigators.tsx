@@ -11,6 +11,7 @@ import {
   Receipt,
   Settings,
   Shield,
+  SlidersHorizontal,
   Star,
   Store,
   UtensilsCrossed,
@@ -27,6 +28,7 @@ import {
   InstructorDashboardScreen,
   InstructorWorkshopsScreen,
 } from '../screens/instructor/InstructorScreens';
+import { SuperBusinessScreen } from '../screens/super/BusinessScreen';
 import {
   SuperApprovalsScreen,
   SuperCurationScreen,
@@ -156,6 +158,15 @@ export function SuperNavigator() {
         options={{
           tabBarIcon: ({ color, size }) => (
             <Users size={size} color={color} strokeWidth={ADMIN_STROKE} />
+          ),
+        }}
+      />
+      <SuperTab.Screen
+        name="Business"
+        component={SuperBusinessScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <SlidersHorizontal size={size} color={color} strokeWidth={ADMIN_STROKE} />
           ),
         }}
       />

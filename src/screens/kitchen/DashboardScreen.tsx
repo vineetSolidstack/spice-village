@@ -8,7 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { Badge, PortalHeader, Screen, SectionLabel, StatCard } from '../../components';
 import { colors, layout } from '../../theme';
 import { useStore } from '../../data/store';
-import { DEMO_PROFILE, TODAYS_SALES } from '../../data/demo';
+import { TODAYS_SALES } from '../../data/demo';
 import { money } from '../../lib/format';
 import { OrderRow } from './OrderRow';
 import { VerifyQrSheet } from './VerifyQrSheet';
@@ -18,7 +18,7 @@ import type { Order } from '../../data/types';
 const ATTENTION_LIMIT = 2;
 
 export function KitchenDashboardScreen() {
-  const { kitchenOrders, acceptingOrders, advanceOrder, verifySlotCode } = useStore();
+  const { kitchenOrders, acceptingOrders, advanceOrder, verifySlotCode, business } = useStore();
   const [verifying, setVerifying] = useState<Order | null>(null);
 
   const open = kitchenOrders.filter((o) => o.status !== 'Completed');
@@ -28,7 +28,7 @@ export function KitchenDashboardScreen() {
   return (
     <Screen bottomInset={16}>
       <PortalHeader
-        title={DEMO_PROFILE.kitchen.name}
+        title={business.kitchenName}
         right={
           <Badge tone={acceptingOrders ? 'success' : 'danger'}>
             {acceptingOrders ? 'Open' : 'Closed'}

@@ -2,7 +2,7 @@
  * Kitchen settings — accepting-orders switch, profile fields, and the way back
  * to the customer app.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -17,18 +17,36 @@ import {
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
-import { CATEGORIES, DEMO_PROFILE } from '../../data/demo';
 import { useRole } from '../../state/role';
 
 export function KitchenSettingsScreen() {
   const type = useType();
-  const { acceptingOrders, setAcceptingOrders, backend } = useStore();
+  const { acceptingOrders, setAcceptingOrders, backend, business, updateBusiness, categories } =
+    useStore();
   const { setRole } = useRole();
   const { showToast } = useToast();
 
-  const [name, setName] = useState(DEMO_PROFILE.kitchen.name);
-  const [cuisine, setCuisine] = useState(DEMO_PROFILE.kitchen.cuisine);
-  const [pickupWindow, setPickupWindow] = useState(DEMO_PROFILE.kitchen.pickupWindow);
+  // Local draft, synced whenever the saved values change (e.g. edited in the
+  // super admin's Business screen).
+  const [name, setName] = useState(business.kitchenName);
+  const [cuisine, setCuisine] = useState(business.cuisine);
+  const [pickupWindow, setPickupWindow] = useState(business.pickupWindow);
+
+  useEffect(() => {
+    setName(business.kitchenName);
+    setCuisine(business.cuisine);
+    setPickupWindow(business.pickupWindow);
+  }, [business]);
+
+  const onSave = () => {
+    if (!name.trim()) return;
+    updateBusiness({
+      kitchenName: name.trim(),
+      cuisine,
+      pickupWindow: pickupWindow.trim(),
+    });
+    showToast('Kitchen profile saved', 'info');
+  };
 
   return (
     <Screen bottomInset={16}>
@@ -47,7 +65,7 @@ export function KitchenSettingsScreen() {
 
         <Input label="Kitchen name" value={name} onChangeText={setName} />
 
-        <Select label="Primary cuisine" options={CATEGORIES} value={cuisine} onChange={setCuisine} />
+        <Select label="Primary cuisine" options={categories} value={cuisine} onChange={setCuisine} />
 
         <Input
           label="Pickup window"
@@ -56,7 +74,7 @@ export function KitchenSettingsScreen() {
           hint="Shown on every order"
         />
 
-        <Button onPress={() => showToast('Kitchen profile saved', 'info')}>Save changes</Button>
+        <Button disabled={!name.trim()} onPress={onSave}>Save changes</Button>
 
         <View style={styles.divider} />
 

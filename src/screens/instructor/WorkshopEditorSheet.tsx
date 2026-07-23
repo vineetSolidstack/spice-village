@@ -14,7 +14,6 @@ import { asset } from '../../components/Media';
 import { colors, palette, radius } from '../../theme';
 import { useType } from '../../theme/useType';
 import { FOOD_IMAGES, FOOD_IMAGE_KEYS } from '../../data/images';
-import { DEMO_PROFILE } from '../../data/demo';
 import type { Workshop, WorkshopSession } from '../../data/types';
 
 export type WorkshopEditorSheetProps = {
@@ -24,11 +23,11 @@ export type WorkshopEditorSheetProps = {
   onSave: (workshop: Workshop) => void;
 };
 
-export function blankWorkshop(): Workshop {
+export function blankWorkshop(host: string): Workshop {
   return {
     id: '',
     title: '',
-    host: DEMO_PROFILE.instructor.name,
+    host,
     price: 0,
     duration: '2 hrs',
     seatsLeft: 0,
