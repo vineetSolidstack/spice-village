@@ -8,8 +8,8 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Input, Screen } from '../../components';
-import { colors, displayFont, layout, radius, shadow } from '../../theme';
+import { BrandLogo, Button, Input, Screen } from '../../components';
+import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useAuth } from '../../state/auth';
 
@@ -62,10 +62,11 @@ export function SignInScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {/* No logo exists — the brand is the name set in the display face. */}
-          <Text style={styles.brand}>Spice Route</Text>
+          <View style={styles.logoWrap}>
+            <BrandLogo size={96} />
+          </View>
           <Text style={[type.body(14, 600), styles.tagline]}>
-            Homemade meals, pre-ordered. And classes worth showing up for.
+            Hot, homemade meals — pre-ordered. And classes worth showing up for.
           </Text>
 
           <View style={[styles.card, shadow.card]}>
@@ -125,8 +126,8 @@ export function SignInScreen() {
           </View>
 
           <Text style={[type.body(12, 600), styles.footnote]}>
-            Kitchen owners: create an account, then enter the invite code from your Spice Route
-            admin in Profile.
+            Kitchen owners: create an account, then enter the invite code from your
+            Nandhan Delight admin in Profile.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -142,13 +143,7 @@ const styles = StyleSheet.create({
     padding: layout.gutter,
     gap: 12,
   },
-  brand: {
-    fontFamily: displayFont(800),
-    fontSize: 34,
-    lineHeight: 40,
-    color: colors.textBrand,
-    textAlign: 'center',
-  },
+  logoWrap: { alignItems: 'center', marginBottom: 4 },
   tagline: { color: colors.textMuted, textAlign: 'center', marginBottom: 8 },
   card: {
     backgroundColor: colors.surfaceCard,

@@ -16,8 +16,11 @@ import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
 import { useCart } from '../../state/cart';
+import { useAuth } from '../../state/auth';
 import { money } from '../../lib/format';
 import { canBook, remaining } from '../../lib/slotCode';
+import { paymentsEnabled, createRazorpayOrder, releaseUnpaidOrder, type RazorpayOrder } from '../../lib/pay';
+import { PaymentScreen } from './PaymentScreen';
 import type { Slot } from '../../data/types';
 import type { CustomerStackScreen } from '../../navigation/types';
 
@@ -26,18 +29,28 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   const type = useType();
   const insets = useSafeAreaInsets();
   const { slots, placeOrder, getKitchen, business } = useStore();
+  const { user } = useAuth();
   const cart = useCart();
   const { showToast } = useToast();
 
   const [selected, setSelected] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
+  // Set while the Razorpay sheet is open, once the order is reserved.
+  const [payment, setPayment] = useState<{ orderId: string; razorpay: RazorpayOrder } | null>(null);
 
   const kitchen = cart.kitchenSlug ? getKitchen(cart.kitchenSlug) : undefined;
+
+  const finishSuccess = () => {
+    cart.clear();
+    showToast(`${t.orderPlaced} 🍛`, 'success');
+    navigation.navigate('OrdersTab');
+  };
 
   const onPlace = async () => {
     if (!selected || !cart.kitchenSlug || placing) return;
     setPlacing(true);
 
+    // Reserve the slot first (creates the order; unpaid when payments are on).
     const result = await placeOrder({
       kitchenSlug: cart.kitchenSlug,
       slotDigits: selected,
@@ -49,17 +62,38 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
       })),
     });
 
-    setPlacing(false);
-
     if (!result) {
+      setPlacing(false);
       showToast('That slot just filled up. Pick another?', 'danger');
       setSelected(null);
       return;
     }
 
-    cart.clear();
-    showToast(`${t.orderPlaced} 🍛`, 'success');
-    navigation.navigate('OrdersTab');
+    // Pay-at-pickup (no gateway configured, or demo data): done here.
+    if (!paymentsEnabled || !result.orderId) {
+      setPlacing(false);
+      finishSuccess();
+      return;
+    }
+
+    // Online payment: ask the server to open a Razorpay order, then show checkout.
+    const razorpay = await createRazorpayOrder(result.orderId);
+    setPlacing(false);
+
+    if (!razorpay) {
+      // Couldn't start payment — release the slot we just reserved.
+      await releaseUnpaidOrder(result.orderId);
+      showToast('Could not start payment. Please try again.', 'danger');
+      return;
+    }
+    setPayment({ orderId: result.orderId, razorpay });
+  };
+
+  const onPaymentCancelled = async (reason: string) => {
+    const orderId = payment?.orderId;
+    setPayment(null);
+    if (orderId) await releaseUnpaidOrder(orderId);
+    showToast(reason, 'danger');
   };
 
   if (cart.rows.length === 0) {
@@ -171,9 +205,31 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
       {/* ------------------------------------------------------ checkout */}
       <View style={[styles.footer, { paddingBottom: 16 + (insets.bottom ? 0 : 4) }]}>
         <Button block disabled={!selected || placing} onPress={() => void onPlace()}>
-          {placing ? 'Placing…' : `${t.placeOrder} · ${money(cart.total)}`}
+          {placing
+            ? 'Please wait…'
+            : paymentsEnabled
+              ? `Pay ${money(cart.total)} · UPI`
+              : `${t.placeOrder} · ${money(cart.total)}`}
         </Button>
       </View>
+
+      {payment ? (
+        <PaymentScreen
+          open
+          orderId={payment.orderId}
+          razorpay={payment.razorpay}
+          kitchenName={kitchen?.name ?? business.kitchenName}
+          reference={`Order · ${cart.count} items`}
+          customerName={user?.name}
+          customerEmail={user?.email ?? undefined}
+          customerPhone={business.phone || undefined}
+          onPaid={() => {
+            setPayment(null);
+            finishSuccess();
+          }}
+          onCancelled={(reason) => void onPaymentCancelled(reason)}
+        />
+      ) : null}
     </View>
   );
 }

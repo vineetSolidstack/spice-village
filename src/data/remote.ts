@@ -12,7 +12,7 @@
 import { requireSupabase } from './supabase';
 import type { BulkRequest, BulkStatus, PaymentMode } from './types';
 
-export type RemoteOrder = { ref: string; slotCode: string; slotTime: string; itemCount: number };
+export type RemoteOrder = { orderId: string; ref: string; slotCode: string; slotTime: string; itemCount: number };
 
 /** Map the app's title-case bulk status onto the `bulk_status` enum. */
 const BULK_STATUS_DB: Record<BulkStatus, string> = {
@@ -60,6 +60,7 @@ export async function placeOrder(input: {
     if (!row) return null;
 
     return {
+      orderId: row.order_id,
       ref: row.ref,
       slotCode: row.slot_code,
       slotTime: row.slot_time,

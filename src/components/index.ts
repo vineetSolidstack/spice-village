@@ -1,6 +1,7 @@
 export * from './AppBar';
 export * from './Badge';
 export * from './Bits';
+export * from './BrandLogo';
 export * from './Button';
 export * from './Card';
 export * from './Checkbox';

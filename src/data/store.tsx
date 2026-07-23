@@ -54,7 +54,7 @@ import * as remote from './remote';
 import * as fetchApi from './fetch';
 import { isSupabaseConfigured } from './supabase';
 
-export type PlacedOrder = { ref: string; slotCode: string; slotTime: string; itemCount: number };
+export type PlacedOrder = { orderId: string | null; ref: string; slotCode: string; slotTime: string; itemCount: number };
 
 /**
  * How the customer app presents itself.
@@ -360,11 +360,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // The server rejected it — most likely the slot filled between render
         // and submit. Surface the failure rather than faking a local order.
         if (!result) return null;
-        placed = result;
+        placed = { ...result, orderId: result.orderId };
       } else {
         const sequence = slot.used + 1;
         refCounter += 1;
         placed = {
+          orderId: null,
           ref: `SR-${refCounter}`,
           slotCode: slotCode(slot.digits, sequence),
           slotTime: slot.time,
