@@ -1,25 +1,51 @@
--- Spice Route — Postgres schema
+-- Spice Route — Postgres schema.
+--
+-- RUN THIS FIRST. Order: schema.sql → functions.sql → policies.sql → seed.sql
+-- (functions.sql compiles against these tables, so it fails if run first.)
+--
+-- Safe to re-run: types, tables, and indexes are all guarded.
 --
 -- Encodes the founder's core business rules from the handoff:
 --   1. Pickup slots have capacity caps, re-checked server-side at order creation.
---   2. Every order carries a slot-sequence code (`500-07`) which is also the QR payload.
+--   2. Every order carries a slot-sequence code (`500-07`), also the QR payload.
 --   3. Bulk/event orders are a separate flow — no cart, no slots, priced by quote.
 
 create extension if not exists "pgcrypto";
 
 -- ---------------------------------------------------------------- enums ----
 
-create type user_role as enum ('customer', 'kitchen_owner', 'instructor', 'super_admin');
-create type approval_state as enum ('pending', 'approved', 'suspended', 'rejected');
-create type order_status as enum ('new', 'preparing', 'ready', 'completed', 'cancelled');
-create type bulk_status as enum ('pending_quote', 'quoted', 'declined', 'accepted');
-create type payment_mode as enum ('venue', 'online');
-create type workshop_status as enum ('draft', 'live', 'archived');
-create type language_code as enum ('en', 'ta', 'hi');
+-- `create type` has no IF NOT EXISTS, so each is guarded for re-runs.
+do $$ begin
+  create type user_role as enum ('customer', 'kitchen_owner', 'instructor', 'super_admin');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type approval_state as enum ('pending', 'approved', 'suspended', 'rejected');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type order_status as enum ('new', 'preparing', 'ready', 'completed', 'cancelled');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type bulk_status as enum ('pending_quote', 'quoted', 'declined', 'accepted');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type payment_mode as enum ('venue', 'online');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type workshop_status as enum ('draft', 'live', 'archived');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type language_code as enum ('en', 'ta', 'hi');
+exception when duplicate_object then null; end $$;
 
 -- --------------------------------------------------------------- people ----
 
-create table profiles (
+create table if not exists profiles (
   id uuid primary key references auth.users on delete cascade,
   full_name text not null,
   phone text,
@@ -28,8 +54,8 @@ create table profiles (
   created_at timestamptz not null default now()
 );
 
--- A user may hold several roles (the demo instructor also owns a kitchen).
-create table user_roles (
+-- A user may hold several roles (the founder owns the kitchen AND teaches).
+create table if not exists user_roles (
   user_id uuid not null references profiles on delete cascade,
   role user_role not null,
   primary key (user_id, role)
@@ -37,15 +63,14 @@ create table user_roles (
 
 -- ------------------------------------------------------------- kitchens ----
 
-create table kitchens (
+create table if not exists kitchens (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
   owner_id uuid not null references profiles on delete cascade,
   name text not null,
   cuisine text not null,
   area text not null,
-  -- Denormalised display distance is computed client-side from geo; stored
-  -- coordinates are the source of truth.
+  -- Display distance is computed client-side from geo; coordinates are truth.
   latitude double precision,
   longitude double precision,
   rating numeric(2, 1) not null default 0 check (rating between 0 and 5),
@@ -60,10 +85,10 @@ create table kitchens (
   created_at timestamptz not null default now()
 );
 
-create index kitchens_state_idx on kitchens (state) where state = 'approved';
-create index kitchens_featured_idx on kitchens (featured) where featured;
+create index if not exists kitchens_state_idx on kitchens (state) where state = 'approved';
+create index if not exists kitchens_featured_idx on kitchens (featured) where featured;
 
-create table dishes (
+create table if not exists dishes (
   id uuid primary key default gen_random_uuid(),
   kitchen_id uuid not null references kitchens on delete cascade,
   name text not null,
@@ -81,11 +106,11 @@ create table dishes (
   created_at timestamptz not null default now()
 );
 
-create index dishes_kitchen_idx on dishes (kitchen_id, is_combo, sort_order);
+create index if not exists dishes_kitchen_idx on dishes (kitchen_id, is_combo, sort_order);
 
 -- ---------------------------------------------------------------- slots ----
 
-create table pickup_slots (
+create table if not exists pickup_slots (
   id uuid primary key default gen_random_uuid(),
   kitchen_id uuid not null references kitchens on delete cascade,
   -- Clock time as displayed, e.g. '5:00 pm'.
@@ -105,11 +130,11 @@ create table pickup_slots (
   constraint slot_within_capacity check (used <= capacity)
 );
 
-create index pickup_slots_kitchen_idx on pickup_slots (kitchen_id, service_date);
+create index if not exists pickup_slots_kitchen_idx on pickup_slots (kitchen_id, service_date);
 
 -- --------------------------------------------------------------- orders ----
 
-create table orders (
+create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   -- Human reference shown alongside the slot code, e.g. 'SR-7194'.
   ref text not null unique,
@@ -129,10 +154,10 @@ create table orders (
   unique (slot_id, slot_code)
 );
 
-create index orders_kitchen_status_idx on orders (kitchen_id, status);
-create index orders_customer_idx on orders (customer_id, placed_at desc);
+create index if not exists orders_kitchen_status_idx on orders (kitchen_id, status);
+create index if not exists orders_customer_idx on orders (customer_id, placed_at desc);
 
-create table order_lines (
+create table if not exists order_lines (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references orders on delete cascade,
   dish_id uuid not null references dishes on delete restrict,
@@ -142,13 +167,13 @@ create table order_lines (
   quantity integer not null check (quantity > 0)
 );
 
-create index order_lines_order_idx on order_lines (order_id);
+create index if not exists order_lines_order_idx on order_lines (order_id);
 
 -- ----------------------------------------------------------- bulk quotes ----
 
 -- Bulk orders deliberately bypass cart and slots: the kitchen prices them by
 -- hand and they consume no pickup-slot capacity.
-create table bulk_requests (
+create table if not exists bulk_requests (
   id uuid primary key default gen_random_uuid(),
   ref text not null unique,
   kitchen_id uuid not null references kitchens on delete cascade,
@@ -165,7 +190,7 @@ create table bulk_requests (
   created_at timestamptz not null default now()
 );
 
-create table bulk_request_lines (
+create table if not exists bulk_request_lines (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null references bulk_requests on delete cascade,
   dish_id uuid not null references dishes on delete restrict,
@@ -175,7 +200,7 @@ create table bulk_request_lines (
 
 -- ------------------------------------------------------------ workshops ----
 
-create table workshops (
+create table if not exists workshops (
   id uuid primary key default gen_random_uuid(),
   instructor_id uuid not null references profiles on delete cascade,
   title text not null,
@@ -187,7 +212,7 @@ create table workshops (
   created_at timestamptz not null default now()
 );
 
-create table workshop_sessions (
+create table if not exists workshop_sessions (
   id uuid primary key default gen_random_uuid(),
   workshop_id uuid not null references workshops on delete cascade,
   starts_at timestamptz not null,
@@ -198,9 +223,9 @@ create table workshop_sessions (
   constraint session_within_capacity check (booked <= capacity)
 );
 
-create index workshop_sessions_workshop_idx on workshop_sessions (workshop_id, starts_at);
+create index if not exists workshop_sessions_workshop_idx on workshop_sessions (workshop_id, starts_at);
 
-create table workshop_bookings (
+create table if not exists workshop_bookings (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references workshop_sessions on delete cascade,
   customer_id uuid not null references profiles on delete restrict,
@@ -210,4 +235,4 @@ create table workshop_bookings (
   created_at timestamptz not null default now()
 );
 
-create index workshop_bookings_session_idx on workshop_bookings (session_id);
+create index if not exists workshop_bookings_session_idx on workshop_bookings (session_id);

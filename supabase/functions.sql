@@ -1,5 +1,9 @@
 -- Spice Route — order creation, QR verification, and workshop booking.
 --
+-- RUN SECOND, AFTER schema.sql. These functions compile against the tables it
+-- creates, so running this first fails with 'relation "pickup_slots" does not
+-- exist'. Order: schema.sql → functions.sql → policies.sql → seed.sql
+--
 -- Business rule #1 is enforced HERE, not in the client: "The server must
 -- re-check remaining capacity inside order creation and reject if full —
 -- client-side gating is UX only."
