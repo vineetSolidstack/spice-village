@@ -4,13 +4,14 @@
 import React from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, QrCode } from 'lucide-react-native';
+import { ChevronRight, QrCode, RotateCcw } from 'lucide-react-native';
 
-import { Badge, SlotCodeChip } from '../../components';
+import { Badge, Button, SlotCodeChip, useToast } from '../../components';
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
+import { useCart } from '../../state/cart';
 import { money, plural } from '../../lib/format';
 import type { Order } from '../../data/types';
 import type { OrderStackScreen } from '../../navigation/types';
@@ -28,9 +29,24 @@ export function OrdersScreen({ navigation }: OrderStackScreen<'Orders'>) {
   const type = useType();
   const insets = useSafeAreaInsets();
   const { customerOrders, loading, refresh } = useStore();
+  const cart = useCart();
+  const { showToast } = useToast();
 
   const active = customerOrders.filter((o) => o.status !== 'Completed');
   const past = customerOrders.filter((o) => o.status === 'Completed');
+
+  const onReorder = (order: Order) => {
+    const added = cart.reorder(
+      order.kitchenSlug,
+      order.lines.map((l) => ({ dishId: l.dishId, quantity: l.quantity })),
+    );
+    if (added === 0) {
+      showToast('Those dishes aren’t available right now', 'danger');
+      return;
+    }
+    if (added < order.lines.length) showToast('Some items were unavailable and skipped', 'info');
+    navigation.navigate('HomeTab', { screen: 'Cart' });
+  };
 
   return (
     <View style={styles.root}>
@@ -73,6 +89,7 @@ export function OrdersScreen({ navigation }: OrderStackScreen<'Orders'>) {
                 key={order.ref}
                 order={order}
                 onPress={() => navigation.navigate('OrderDetail', { ref: order.ref })}
+                onReorder={() => onReorder(order)}
               />
             ))}
           </>
@@ -112,23 +129,40 @@ function ActiveCard({ order, onPress }: { order: Order; onPress: () => void }) {
   );
 }
 
-function PastRow({ order, onPress }: { order: Order; onPress: () => void }) {
+function PastRow({
+  order,
+  onPress,
+  onReorder,
+}: {
+  order: Order;
+  onPress: () => void;
+  onReorder: () => void;
+}) {
   const type = useType();
   const items = order.lines.reduce((sum, l) => sum + l.quantity, 0);
 
   return (
-    <Pressable onPress={onPress} style={[styles.pastRow, shadow.card]}>
-      <View style={styles.pastBody}>
-        <Text style={type.body(15, 700)} numberOfLines={1}>
-          {order.kitchenName}
-        </Text>
-        <Text style={[type.body(12, 600), { color: colors.textMuted }]} numberOfLines={1}>
-          {order.slotCode} · {plural(items, 'item')} · {order.when}
-        </Text>
-      </View>
-      <Text style={type.body(14, 700)}>{money(order.total)}</Text>
-      <ChevronRight size={18} color={colors.textFaint} strokeWidth={2} />
-    </Pressable>
+    <View style={[styles.pastRow, shadow.card]}>
+      <Pressable onPress={onPress} style={styles.pastMain}>
+        <View style={styles.pastBody}>
+          <Text style={type.body(15, 700)} numberOfLines={1}>
+            {order.kitchenName}
+          </Text>
+          <Text style={[type.body(12, 600), { color: colors.textMuted }]} numberOfLines={1}>
+            {order.slotCode} · {plural(items, 'item')} · {order.when}
+          </Text>
+        </View>
+        <Text style={type.body(14, 700)}>{money(order.total)}</Text>
+      </Pressable>
+      <Button
+        size="sm"
+        variant="secondary"
+        icon={<RotateCcw size={15} color={colors.textBrand} strokeWidth={2} />}
+        onPress={onReorder}
+      >
+        Reorder
+      </Button>
+    </View>
   );
 }
 
@@ -171,6 +205,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  pastMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   pastBody: { flex: 1, minWidth: 0 },
   empty: { alignItems: 'center', paddingVertical: 64, gap: 12 },
   emptyEmoji: { fontSize: 48 },

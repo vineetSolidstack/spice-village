@@ -3,6 +3,7 @@
  * to the customer app.
  */
 import React, { useEffect, useState } from 'react';
+import { Ticket } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -17,6 +18,7 @@ import {
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
+import { CouponsSheet } from './CouponsSheet';
 import { useAuth } from '../../state/auth';
 
 export function KitchenSettingsScreen() {
@@ -31,6 +33,7 @@ export function KitchenSettingsScreen() {
   const [name, setName] = useState(business.kitchenName);
   const [cuisine, setCuisine] = useState(business.cuisine);
   const [pickupWindow, setPickupWindow] = useState(business.pickupWindow);
+  const [showCoupons, setShowCoupons] = useState(false);
 
   useEffect(() => {
     setName(business.kitchenName);
@@ -78,6 +81,14 @@ export function KitchenSettingsScreen() {
 
         <View style={styles.divider} />
 
+        <Button
+          variant="secondary"
+          icon={<Ticket size={16} color={colors.textBrand} strokeWidth={2} />}
+          onPress={() => setShowCoupons(true)}
+        >
+          Discount codes
+        </Button>
+
         {/*
           Be precise here rather than flattering: with credentials set, orders
           and bookings are written to Supabase, but every screen still *reads*
@@ -93,6 +104,7 @@ export function KitchenSettingsScreen() {
           Back to customer app
         </Button>
       </View>
+      <CouponsSheet open={showCoupons} onClose={() => setShowCoupons(false)} />
     </Screen>
   );
 }

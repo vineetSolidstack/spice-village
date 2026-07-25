@@ -9,7 +9,7 @@
  */
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Check, Plus } from 'lucide-react-native';
+import { Check, Heart, Plus } from 'lucide-react-native';
 
 import { colors, motion, radius, shadow } from '../theme';
 import { useType } from '../theme/useType';
@@ -36,6 +36,9 @@ export type MenuRowProps = {
   /** Quantity already in the cart; drives the badge on the add button. */
   quantity?: number;
   available?: boolean;
+  /** Heart state + toggle; omit to hide the heart. */
+  favourite?: boolean;
+  onToggleFavourite?: () => void;
   onAdd: () => void;
   onPress?: () => void;
 };
@@ -52,6 +55,8 @@ export function MenuRow({
   gallery,
   quantity = 0,
   available = true,
+  favourite,
+  onToggleFavourite,
   onAdd,
   onPress,
 }: MenuRowProps) {
@@ -104,6 +109,22 @@ export function MenuRow({
       {/* Photo (auto-swipes if the dish has several) with the add button over it. */}
       <View style={styles.thumbWrap}>
         <Photo image={image} gallery={gallery} style={styles.thumb} />
+        {onToggleFavourite ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
+            onPress={onToggleFavourite}
+            style={styles.heart}
+            hitSlop={8}
+          >
+            <Heart
+              size={18}
+              color={favourite ? colors.actionPrimary : '#FFFFFF'}
+              fill={favourite ? colors.actionPrimary : 'rgba(43,29,18,0.35)'}
+              strokeWidth={2}
+            />
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={inCart ? `${name}, ${quantity} in cart` : `Add ${name}`}
@@ -218,6 +239,16 @@ const styles = StyleSheet.create({
   soldOut: { color: colors.statusDanger, marginTop: 2 },
   thumbWrap: { width: THUMB, height: THUMB },
   thumb: { width: THUMB, height: THUMB, borderRadius: radius.md },
+  heart: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   add: {
     position: 'absolute',
     right: -8,

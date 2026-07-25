@@ -10,7 +10,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Clock } from 'lucide-react-native';
 
-import { Button, IconButton, Media, Stepper, VegDot, useToast } from '../../components';
+import { Button, IconButton, Input, Media, Stepper, VegDot, useToast } from '../../components';
 import { colors, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
@@ -20,6 +20,7 @@ import { useAuth } from '../../state/auth';
 import { money } from '../../lib/format';
 import { canBook, remaining } from '../../lib/slotCode';
 import { paymentsEnabled, createRazorpayOrder, releaseUnpaidOrder, type RazorpayOrder } from '../../lib/pay';
+import { applyCouponToOrder, previewCoupon } from '../../data/fetch';
 import { PaymentScreen } from './PaymentScreen';
 import type { Slot } from '../../data/types';
 import type { CustomerStackScreen } from '../../navigation/types';
@@ -28,7 +29,7 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   const { t } = useLanguage();
   const type = useType();
   const insets = useSafeAreaInsets();
-  const { slots, placeOrder, getKitchen, business } = useStore();
+  const { slots, placeOrder, getKitchen, business, backend } = useStore();
   const { user } = useAuth();
   const cart = useCart();
   const { showToast } = useToast();
@@ -38,7 +39,24 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   // Set while the Razorpay sheet is open, once the order is reserved.
   const [payment, setPayment] = useState<{ orderId: string; razorpay: RazorpayOrder } | null>(null);
 
+  // Coupon: the typed code, and the previewed discount (0 = none applied).
+  const [coupon, setCoupon] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponMsg, setCouponMsg] = useState<string | null>(null);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
+
   const kitchen = cart.kitchenSlug ? getKitchen(cart.kitchenSlug) : undefined;
+  const couponsAvailable = backend === 'supabase';
+  const payable = Math.max(0, cart.total - couponDiscount);
+
+  const onCheckCoupon = async () => {
+    if (!coupon.trim() || !cart.kitchenSlug || checkingCoupon) return;
+    setCheckingCoupon(true);
+    const result = await previewCoupon(cart.kitchenSlug, coupon.trim(), cart.total);
+    setCheckingCoupon(false);
+    setCouponDiscount(result.valid ? result.discount : 0);
+    setCouponMsg(result.message);
+  };
 
   const finishSuccess = () => {
     cart.clear();
@@ -67,6 +85,13 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
       showToast('That slot just filled up. Pick another?', 'danger');
       setSelected(null);
       return;
+    }
+
+    // Apply the coupon to the reserved order so the amount charged is the
+    // discounted one. Re-validated server-side; a failure just skips it.
+    if (result.orderId && couponDiscount > 0 && coupon.trim()) {
+      const applied = await applyCouponToOrder(result.orderId, coupon.trim());
+      if (applied <= 0) showToast('That code couldn’t be applied', 'danger');
     }
 
     // Pay-at-pickup (no gateway configured, or demo data): done here.
@@ -186,6 +211,44 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
           ) : null}
         </View>
 
+        {/* ------------------------------------------------------ coupon */}
+        {couponsAvailable ? (
+          <View style={styles.section}>
+            <Text style={[type.display(19, 700)]}>Discount code</Text>
+            <View style={styles.couponRow}>
+              <Input
+                placeholder="Enter code"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                value={coupon}
+                onChangeText={(v) => {
+                  setCoupon(v);
+                  setCouponDiscount(0);
+                  setCouponMsg(null);
+                }}
+                style={styles.couponInput}
+              />
+              <Button
+                variant="secondary"
+                disabled={!coupon.trim() || checkingCoupon}
+                onPress={() => void onCheckCoupon()}
+              >
+                {checkingCoupon ? '…' : 'Apply'}
+              </Button>
+            </View>
+            {couponMsg ? (
+              <Text
+                style={[
+                  type.body(12, 700),
+                  { color: couponDiscount > 0 ? colors.statusSuccess : colors.statusDanger },
+                ]}
+              >
+                {couponMsg}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* --------------------------------------------------------- bill */}
         <View style={styles.section}>
           <Text style={[type.display(19, 700), styles.billTitle]}>Bill</Text>
@@ -194,9 +257,12 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
             {cart.saved > 0 ? (
               <BillRow label="Pre-order saving" value={`− ${money(cart.saved)}`} good />
             ) : null}
+            {couponDiscount > 0 ? (
+              <BillRow label={`Coupon ${coupon.trim().toUpperCase()}`} value={`− ${money(couponDiscount)}`} good />
+            ) : null}
             <View style={styles.billTotal}>
               <Text style={type.body(16, 800)}>Total</Text>
-              <Text style={type.body(16, 800)}>{money(cart.total)}</Text>
+              <Text style={type.body(16, 800)}>{money(payable)}</Text>
             </View>
           </View>
         </View>
@@ -208,8 +274,8 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
           {placing
             ? 'Please wait…'
             : paymentsEnabled
-              ? `Pay ${money(cart.total)} · UPI`
-              : `${t.placeOrder} · ${money(cart.total)}`}
+              ? `Pay ${money(payable)} · UPI`
+              : `${t.placeOrder} · ${money(payable)}`}
         </Button>
       </View>
 
@@ -337,6 +403,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   section: { gap: 10 },
+  couponRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  couponInput: { flex: 1 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionHint: { color: colors.textMuted },
   slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

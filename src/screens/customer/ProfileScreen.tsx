@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Bell, ChefHat, ChevronRight, Globe, KeyRound, Receipt } from 'lucide-react-native';
+import { Bell, ChefHat, ChevronRight, Globe, Info, KeyRound, Receipt } from 'lucide-react-native';
 
 import {
   Avatar,
@@ -34,7 +34,7 @@ const NOTIFICATIONS = [
   { id: 'n3', title: 'Workshop reminder', body: 'Master the dosa flip starts tomorrow at 10 am.', when: 'Yesterday' },
 ];
 
-export function ProfileScreen() {
+export function ProfileScreen({ navigation }: { navigation: { navigate: (screen: string) => void } }) {
   const { t, language, setLanguage } = useLanguage();
   const type = useType();
   const { setRole, roles, user, signOut, demo, refreshRoles } = useAuth();
@@ -94,6 +94,11 @@ export function ProfileScreen() {
       icon: <Bell size={20} color={colors.textBrand} strokeWidth={1.75} />,
       label: t.notif,
       onPress: () => setShowNotif(true),
+    },
+    {
+      icon: <Info size={20} color={colors.textBrand} strokeWidth={1.75} />,
+      label: 'About & policies',
+      onPress: () => navigation.navigate('About'),
     },
     ...(demo || roles.includes('kitchen')
       ? []

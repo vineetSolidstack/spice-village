@@ -3,7 +3,7 @@
  */
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps } from '@react-navigation/native';
+import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
 
 /* -------------------------------------------------------------- customer -- */
 
@@ -16,10 +16,15 @@ export type CustomerStackParamList = {
 };
 
 export type CustomerTabParamList = {
-  HomeTab: undefined;
+  HomeTab: NavigatorScreenParams<CustomerStackParamList> | undefined;
   WorkshopsTab: undefined;
   OrdersTab: undefined;
   ProfileTab: undefined;
+};
+
+export type ProfileStackParamList = {
+  Profile: undefined;
+  About: undefined;
 };
 
 export type WorkshopStackParamList = {
@@ -39,6 +44,11 @@ export type CustomerStackScreen<T extends keyof CustomerStackParamList> = Compos
 
 export type WorkshopStackScreen<T extends keyof WorkshopStackParamList> = CompositeScreenProps<
   NativeStackScreenProps<WorkshopStackParamList, T>,
+  BottomTabScreenProps<CustomerTabParamList>
+>;
+
+export type ProfileStackScreen<T extends keyof ProfileStackParamList> = CompositeScreenProps<
+  NativeStackScreenProps<ProfileStackParamList, T>,
   BottomTabScreenProps<CustomerTabParamList>
 >;
 

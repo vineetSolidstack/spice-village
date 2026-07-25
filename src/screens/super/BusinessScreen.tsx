@@ -51,6 +51,9 @@ export function SuperBusinessScreen() {
       pickupWindow: draft.pickupWindow.trim(),
       instructorName: draft.instructorName.trim(),
       phone: draft.phone.trim(),
+      fssai: draft.fssai.trim(),
+      legalAddress: draft.legalAddress.trim(),
+      supportEmail: draft.supportEmail.trim(),
     });
     showToast('Business details saved', 'info');
   };
@@ -112,6 +115,34 @@ export function SuperBusinessScreen() {
             <Text style={[type.body(12, 600), styles.note]}>
               Individual pickup times and seat caps live in the kitchen portal under Slots.
             </Text>
+          </View>
+        </View>
+
+        <View>
+          <SectionLabel style={styles.groupLabel}>Legal & compliance</SectionLabel>
+          <View style={[styles.card, shadow.card]}>
+            <Input
+              label="FSSAI licence number"
+              placeholder="22426294000044"
+              keyboardType="number-pad"
+              hint="Shown to customers under About & policies — required for food businesses"
+              value={draft.fssai}
+              onChangeText={(v) => set('fssai', v)}
+            />
+            <Input
+              label="Registered address"
+              placeholder="Full FSSAI-registered address"
+              value={draft.legalAddress}
+              onChangeText={(v) => set('legalAddress', v)}
+            />
+            <Input
+              label="Support email"
+              placeholder="you@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={draft.supportEmail}
+              onChangeText={(v) => set('supportEmail', v)}
+            />
           </View>
         </View>
 

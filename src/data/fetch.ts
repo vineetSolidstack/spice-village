@@ -344,7 +344,10 @@ export async function savePlatformMode(mode: 'single' | 'marketplace'): Promise<
 /** Super-admin write of a kitchen's public details. */
 export async function saveKitchenDetails(
   slug: string,
-  patch: { name?: string; cuisine?: string; area?: string; pickup_window?: string },
+  patch: {
+    name?: string; cuisine?: string; area?: string; pickup_window?: string;
+    fssai_number?: string; legal_address?: string; support_email?: string;
+  },
 ): Promise<boolean> {
   try {
     const db = requireSupabase();
@@ -660,5 +663,129 @@ export async function fetchMarketingOptIn(): Promise<boolean> {
     return (data as { marketing_opt_in?: boolean } | null)?.marketing_opt_in !== false;
   } catch {
     return true;
+  }
+}
+
+/* -------------------------------------------------------------- coupons -- */
+
+export type Coupon = {
+  id: string;
+  code: string;
+  kind: 'percent' | 'flat';
+  value: number;
+  minOrder: number;
+  maxDiscount: number | null;
+  maxUses: number | null;
+  usedCount: number;
+  active: boolean;
+  expiresAt: string | null;
+};
+
+type CouponRow = {
+  id: string; code: string; kind: 'percent' | 'flat'; value: number;
+  min_order: number; max_discount: number | null; max_uses: number | null;
+  used_count: number; active: boolean; expires_at: string | null;
+};
+
+/** The owner's discount codes for their kitchen. */
+export async function listCoupons(kitchenSlug: string): Promise<Coupon[]> {
+  const db = requireSupabase();
+  const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
+  if (!kitchen) return [];
+  const { data, error } = await db
+    .from('coupons')
+    .select('id, code, kind, value, min_order, max_discount, max_uses, used_count, active, expires_at')
+    .eq('kitchen_id', (kitchen as { id: string }).id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as CouponRow[]).map((c) => ({
+    id: c.id,
+    code: c.code,
+    kind: c.kind,
+    value: c.value,
+    minOrder: c.min_order,
+    maxDiscount: c.max_discount,
+    maxUses: c.max_uses,
+    usedCount: c.used_count,
+    active: c.active,
+    expiresAt: c.expires_at,
+  }));
+}
+
+export async function createCoupon(
+  kitchenSlug: string,
+  input: {
+    code: string; kind: 'percent' | 'flat'; value: number;
+    minOrder?: number; maxDiscount?: number | null; maxUses?: number | null; expiresAt?: string | null;
+  },
+): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
+    if (!kitchen) throw new Error('Kitchen not found');
+    const { error } = await db.from('coupons').insert({
+      kitchen_id: (kitchen as { id: string }).id,
+      code: input.code.trim().toUpperCase(),
+      kind: input.kind,
+      value: input.value,
+      min_order: input.minOrder ?? 0,
+      max_discount: input.maxDiscount ?? null,
+      max_uses: input.maxUses ?? null,
+      expires_at: input.expiresAt ?? null,
+    });
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.warn('[spice-route] createCoupon failed', e);
+    return false;
+  }
+}
+
+export async function deleteCoupon(id: string): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.from('coupons').delete().eq('id', id);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.warn('[spice-route] deleteCoupon failed', e);
+    return false;
+  }
+}
+
+/** Preview a code at checkout: discount amount and a message. */
+export async function previewCoupon(
+  kitchenSlug: string,
+  code: string,
+  subtotal: number,
+): Promise<{ valid: boolean; discount: number; message: string }> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('preview_coupon', {
+      p_kitchen_slug: kitchenSlug,
+      p_code: code,
+      p_subtotal: subtotal,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return row
+      ? { valid: Boolean(row.valid), discount: row.discount ?? 0, message: row.message ?? '' }
+      : { valid: false, discount: 0, message: 'That code isn’t valid' };
+  } catch (e) {
+    console.warn('[spice-route] previewCoupon failed', e);
+    return { valid: false, discount: 0, message: 'Could not check that code' };
+  }
+}
+
+/** Apply a code to a reserved order; returns the discount, or 0 on failure. */
+export async function applyCouponToOrder(orderId: string, code: string): Promise<number> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('apply_coupon_to_order', { p_order_id: orderId, p_code: code });
+    if (error) throw error;
+    return typeof data === 'number' ? data : 0;
+  } catch (e) {
+    console.warn('[spice-route] applyCouponToOrder failed', e);
+    return 0;
   }
 }

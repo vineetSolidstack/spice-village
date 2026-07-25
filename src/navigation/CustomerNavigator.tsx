@@ -15,18 +15,21 @@ import { OrderDetailScreen } from '../screens/customer/OrderDetailScreen';
 import { WorkshopsScreen } from '../screens/customer/WorkshopsScreen';
 import { WorkshopDetailScreen } from '../screens/customer/WorkshopDetailScreen';
 import { ProfileScreen } from '../screens/customer/ProfileScreen';
+import { AboutScreen } from '../screens/customer/AboutScreen';
 import { TabBar } from './TabBar';
 import { useLanguage } from '../i18n';
 import type {
   CustomerStackParamList,
   CustomerTabParamList,
   OrderStackParamList,
+  ProfileStackParamList,
   WorkshopStackParamList,
 } from './types';
 
 const HomeStack = createNativeStackNavigator<CustomerStackParamList>();
 const WorkshopStack = createNativeStackNavigator<WorkshopStackParamList>();
 const OrderStack = createNativeStackNavigator<OrderStackParamList>();
+const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
 
 // Screens draw their own sticky headers, so the native header is always off.
@@ -61,6 +64,15 @@ function OrderStackScreen() {
   );
 }
 
+function ProfileStackScreen() {
+  return (
+    <ProfileStack.Navigator screenOptions={stackOptions}>
+      <ProfileStack.Screen name="Profile" component={ProfileScreen} />
+      <ProfileStack.Screen name="About" component={AboutScreen} />
+    </ProfileStack.Navigator>
+  );
+}
+
 export function CustomerNavigator() {
   const { t } = useLanguage();
 
@@ -92,7 +104,7 @@ export function CustomerNavigator() {
       />
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileScreen}
+        component={ProfileStackScreen}
         options={{
           tabBarLabel: t.profile,
           tabBarIcon: ({ color, size }) => <User size={size} color={color} strokeWidth={1.75} />,

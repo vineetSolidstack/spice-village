@@ -81,6 +81,14 @@ export type Business = {
   instructorName: string;
   /** Contact number surfaced on bulk quotes. */
   phone: string;
+  /** FSSAI licence number — legally required to display for food businesses. */
+  fssai: string;
+  /** FSSAI validity, shown alongside the number. */
+  fssaiValidUntil: string;
+  /** Full registered address, shown on the About screen. */
+  legalAddress: string;
+  /** Support email for the About screen. */
+  supportEmail: string;
 };
 
 const BUSINESS_KEY = 'spiceroute.business';
@@ -210,6 +218,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     pickupWindow: DEMO_PROFILE.kitchen.pickupWindow,
     instructorName: DEMO_PROFILE.instructor.name,
     phone: '',
+    fssai: '22426294000044',
+    fssaiValidUntil: '27 Jan 2028',
+    legalAddress:
+      'No. 606/1, Palaniyappa Nagar, Rakkiyapalayam Road, Ammapalayam, Avinashi block, Tirupur, Tamil Nadu 641652',
+    supportEmail: 'vineetkrsnaprashad@gmail.com',
   });
 
   useEffect(() => {
@@ -243,6 +256,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           cuisine: next.cuisine,
           area: next.area,
           pickup_window: next.pickupWindow,
+          fssai_number: next.fssai,
+          legal_address: next.legalAddress,
+          support_email: next.supportEmail,
         });
       }
 

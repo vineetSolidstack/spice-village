@@ -23,6 +23,9 @@ type CartValue = {
   saved: number;
   add: (kitchenSlug: string, dishId: string, delta: number) => void;
   clear: () => void;
+  /** Replace the cart with a past order's still-available dishes. Returns how
+   *  many lines could be re-added (some may be gone or sold out). */
+  reorder: (kitchenSlug: string, lines: { dishId: string; quantity: number }[]) => number;
 };
 
 const CartContext = createContext<CartValue | null>(null);
@@ -51,6 +54,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setKitchenSlug(null);
   }, []);
 
+  const reorder = useCallback<CartValue['reorder']>((slug, lines) => {
+    const kitchen = kitchens.find((k) => k.slug === slug);
+    const catalogue = kitchen ? [...kitchen.combos, ...kitchen.menu] : [];
+    const next: Record<string, number> = {};
+    let added = 0;
+    for (const line of lines) {
+      const dish = catalogue.find((d) => d.id === line.dishId);
+      // Skip dishes that were removed or are currently unavailable.
+      if (dish && dish.available !== false) {
+        next[line.dishId] = line.quantity;
+        added += 1;
+      }
+    }
+    setKitchenSlug(slug);
+    setItems(next);
+    return added;
+  }, [kitchens]);
+
   const value = useMemo<CartValue>(() => {
     const kitchen = kitchens.find((k) => k.slug === kitchenSlug);
     const catalogue = kitchen ? [...kitchen.combos, ...kitchen.menu] : [];
@@ -71,8 +92,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       saved: rows.reduce((sum, r) => sum + (r.oldPrice - r.price) * r.quantity, 0),
       add,
       clear,
+      reorder,
     };
-  }, [items, kitchenSlug, kitchens, add, clear]);
+  }, [items, kitchenSlug, kitchens, add, clear, reorder]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

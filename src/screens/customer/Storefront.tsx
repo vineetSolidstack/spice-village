@@ -29,6 +29,7 @@ import { IconButton, Media, MenuCard, MenuRow, Button } from '../../components';
 import { colors, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
+import { useFavourites } from '../../state/favourites';
 import { money } from '../../lib/format';
 import type { Dish, Kitchen } from '../../data/types';
 
@@ -67,6 +68,7 @@ export function Storefront({
   const { t } = useLanguage();
   const type = useType();
   const insets = useSafeAreaInsets();
+  const favourites = useFavourites();
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Record<string, number>>({});
@@ -94,8 +96,11 @@ export function Storefront({
       if (list) list.push(dish);
       else grouped.set(title, [dish]);
     }
-    return [...grouped.entries()].map(([title, dishes]) => ({ title, dishes }));
-  }, [kitchen, query]);
+    const bySection = [...grouped.entries()].map(([title, dishes]) => ({ title, dishes }));
+    // Favourited dishes surface in their own section at the top.
+    const favs = matching.filter((d) => favourites.isFavourite(d.id));
+    return favs.length ? [{ title: 'Your favourites', dishes: favs }, ...bySection] : bySection;
+  }, [kitchen, query, favourites]);
 
   const popular = useMemo(
     () => [...kitchen.combos, ...kitchen.menu].filter((d) => d.available !== false).slice(0, POPULAR_COUNT),
@@ -302,6 +307,8 @@ export function Storefront({
                   gallery={dish.gallery}
                   quantity={cart[dish.id] ?? 0}
                   available={dish.available !== false}
+                  favourite={favourites.isFavourite(dish.id)}
+                  onToggleFavourite={() => favourites.toggle(dish.id)}
                   onAdd={() => onAdd(dish.id)}
                 />
               ))}
