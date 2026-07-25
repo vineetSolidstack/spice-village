@@ -32,7 +32,7 @@ import { useLanguage } from '../../i18n';
 import { money } from '../../lib/format';
 import type { Dish, Kitchen } from '../../data/types';
 
-const HERO_HEIGHT = 220;
+const HERO_HEIGHT = 248;
 /** How far the white sheet rides up over the hero. */
 const SHEET_OVERLAP = 24;
 const POPULAR_COUNT = 6;

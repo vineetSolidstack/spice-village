@@ -31,7 +31,7 @@ export type MenuRowProps = {
   onPress?: () => void;
 };
 
-const THUMB = 92;
+const THUMB = 116;
 
 export function MenuRow({
   name,
@@ -178,7 +178,7 @@ export function ChipCheck() {
   return <Check size={14} color="#FFFFFF" strokeWidth={3} />;
 }
 
-const CARD_W = 150;
+const CARD_W = 170;
 
 const styles = StyleSheet.create({
   row: {
@@ -208,11 +208,11 @@ const styles = StyleSheet.create({
   thumb: { width: THUMB, height: THUMB, borderRadius: radius.md },
   add: {
     position: 'absolute',
-    right: -6,
-    bottom: -6,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    right: -8,
+    bottom: -8,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.surfaceCard,
     alignItems: 'center',
     justifyContent: 'center',
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   addCount: { alignItems: 'center', justifyContent: 'center' },
   addCountText: { color: '#FFFFFF' },
   card: { width: CARD_W, gap: 4 },
-  cardMediaWrap: { width: CARD_W, height: CARD_W * 0.78, marginBottom: 6 },
+  cardMediaWrap: { width: CARD_W, height: CARD_W * 0.82, marginBottom: 6 },
   cardMedia: { width: '100%', height: '100%', borderRadius: radius.md },
   cardBadge: {
     position: 'absolute',
