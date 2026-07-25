@@ -468,6 +468,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Write through so the change reaches every customer, then re-read to pick
     // up the server-allocated id for newly created dishes.
     if (isSupabaseConfigured) {
+      // Uploaded photos ride along as an ordered URL array; the cover is [0].
+      const photoUrls = (withId.gallery ?? [withId.image])
+        .filter((m) => m.kind === 'photo')
+        .map((m) => (m as { uri: string }).uri);
       void fetchApi
         .saveDishRemote(
           kitchenSlug,
@@ -480,7 +484,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             veg: withId.veg,
             available: withId.available,
             category: withId.category,
-            imageUrl: withId.image.kind === 'photo' ? withId.image.uri : undefined,
+            imageUrl: photoUrls[0],
+            images: photoUrls.length ? photoUrls : undefined,
           },
           isCombo,
         )

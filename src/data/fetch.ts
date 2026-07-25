@@ -51,6 +51,7 @@ type DishRow = {
   is_combo: boolean;
   available: boolean;
   image_path: string | null;
+  images: string[] | null;
   sort_order: number;
   category: string | null;
   bulk_available: boolean | null;
@@ -58,6 +59,12 @@ type DishRow = {
 };
 
 function toDish(d: DishRow): Dish {
+  // Prefer the multi-photo array; fall back to the single cover, then a bundled
+  // stand-in so a dish is never blank.
+  const urls = (d.images ?? []).filter(Boolean);
+  const gallery = urls.length
+    ? urls.map((u) => resolveImage(u, d.id))
+    : [resolveImage(d.image_path, d.id)];
   return {
     id: d.id,
     name: d.name,
@@ -65,7 +72,8 @@ function toDish(d: DishRow): Dish {
     oldPrice: d.old_price,
     veg: d.veg,
     description: d.description ?? '',
-    image: resolveImage(d.image_path, d.id),
+    image: gallery[0],
+    gallery,
     available: d.available,
     category: d.category ?? undefined,
     bulkAvailable: d.bulk_available !== false,
@@ -80,7 +88,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
     .from('kitchens')
     .select(
       'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, bulk_enabled, bulk_min_units, bulk_note,' +
-        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, sort_order, category, bulk_available, bulk_price )',
+        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price )',
     )
     .eq('state', 'approved')
     .order('featured', { ascending: false });
@@ -354,7 +362,7 @@ export async function saveDishRemote(
   kitchenSlug: string,
   dish: {
     id: string; name: string; description: string; price: number; oldPrice: number;
-    veg: boolean; available?: boolean; category?: string; imageUrl?: string;
+    veg: boolean; available?: boolean; category?: string; imageUrl?: string; images?: string[];
   },
   isCombo: boolean,
 ): Promise<string | null> {
@@ -375,6 +383,7 @@ export async function saveDishRemote(
       available: dish.available !== false,
       category: dish.category ?? null,
       ...(dish.imageUrl ? { image_path: dish.imageUrl } : {}),
+      ...(dish.images ? { images: dish.images } : {}),
     };
 
     // A local id (created offline) is not a uuid, so treat it as an insert.

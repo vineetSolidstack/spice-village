@@ -1,5 +1,6 @@
 export * from './AppBar';
 export * from './Badge';
+export * from './AutoCarousel';
 export * from './Bits';
 export * from './BrandLogo';
 export * from './Button';

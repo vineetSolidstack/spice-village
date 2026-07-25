@@ -7,7 +7,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Camera, Check, ImagePlus } from 'lucide-react-native';
+import { Camera, Check, ImagePlus, X } from 'lucide-react-native';
 
 import { Button, Checkbox, Dialog, Input, Media, Switch, VegDot } from '../../components';
 import { asset, photo as photoFill } from '../../components/Media';
@@ -53,8 +53,9 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   const [isCombo, setIsCombo] = useState(false);
   const [available, setAvailable] = useState(true);
   const [imageKey, setImageKey] = useState(FOOD_IMAGE_KEYS[0]);
-  // A real uploaded photo wins over anything picked from the bundled library.
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  // Real uploaded photos win over the bundled library. Several can be added;
+  // the customer app auto-swipes through them.
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [category, setCategory] = useState('');
 
@@ -72,7 +73,11 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     // Match the current image back to a library key if it is one of ours.
     const match = FOOD_IMAGE_KEYS.find((k) => FOOD_IMAGES[k] === (d.image as { source?: unknown }).source);
     setImageKey(match ?? FOOD_IMAGE_KEYS[0]);
-    setUploadedUrl(d.image.kind === 'photo' ? d.image.uri : null);
+    // Existing uploaded photos come back on the gallery as photo fills.
+    const existing = (d.gallery ?? [d.image])
+      .filter((m) => m.kind === 'photo')
+      .map((m) => (m as { uri: string }).uri);
+    setUploadedUrls(existing);
     setCategory(d.category ?? '');
   }, [draft]);
 
@@ -86,6 +91,10 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
 
   const onSubmit = () => {
     if (!valid) return;
+    // Uploaded photos form the gallery; if none, use the picked library image.
+    const gallery = uploadedUrls.length
+      ? uploadedUrls.map((u) => photoFill(u))
+      : [asset(FOOD_IMAGES[imageKey])];
     onSave(
       {
         ...draft.dish,
@@ -96,7 +105,8 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
         oldPrice: oldNum,
         veg,
         available,
-        image: uploadedUrl ? photoFill(uploadedUrl) : asset(FOOD_IMAGES[imageKey]),
+        image: gallery[0],
+        gallery,
       },
       isCombo,
     );
@@ -106,14 +116,17 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   const runUpload = async (take: boolean) => {
     const picked = take ? await captureDishPhoto() : await pickDishPhoto();
     if (!picked) return;
-    // Show it straight away; swap in the hosted URL once it lands.
-    setUploadedUrl(picked.uri);
+    // Show it immediately with its local uri; swap to the hosted URL once up.
+    setUploadedUrls((current) => [...current, picked.uri]);
     if (backend !== 'supabase') return;
     setUploading(true);
     const url = await uploadDishPhoto(showcaseSlug, draft.dish.id, picked);
     setUploading(false);
-    if (url) setUploadedUrl(url);
+    if (url) setUploadedUrls((current) => current.map((u) => (u === picked.uri ? url : u)));
   };
+
+  const removePhoto = (url: string) =>
+    setUploadedUrls((current) => current.filter((u) => u !== url));
 
   return (
     <Dialog
@@ -171,33 +184,40 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
           style={styles.field}
         />
 
-        <Text style={[type.body(13, 700), styles.label]}>Photo</Text>
+        <Text style={[type.body(13, 700), styles.label]}>Photos</Text>
+        <Text style={[type.body(12, 600), styles.libraryHint]}>
+          Add more than one and the app swipes through them automatically.
+          {backend === 'supabase' ? '' : ' Connect Supabase to store uploads.'}
+        </Text>
 
         <View style={styles.uploadRow}>
           <Button size="sm" variant="secondary" icon={<ImagePlus size={16} color={colors.textBrand} strokeWidth={2} />} onPress={() => void runUpload(false)}>
-            {uploading ? 'Uploading…' : 'Upload photo'}
+            {uploading ? 'Uploading…' : 'Upload'}
           </Button>
           <Button size="sm" variant="ghost" icon={<Camera size={16} color={colors.textBrand} strokeWidth={2} />} onPress={() => void runUpload(true)}>
             Camera
           </Button>
         </View>
 
-        {uploadedUrl ? (
-          <View style={styles.uploadPreview}>
-            <Media fill={photoFill(uploadedUrl)} style={styles.uploadThumb} />
-            <View style={styles.uploadText}>
-              <Text style={type.body(13, 700)}>Your photo</Text>
-              <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
-                {backend === 'supabase' ? 'Shown to customers' : 'Connect Supabase to store it'}
-              </Text>
-            </View>
-            <Button size="sm" variant="ghost" onPress={() => setUploadedUrl(null)}>
-              Remove
-            </Button>
-          </View>
+        {uploadedUrls.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
+            {uploadedUrls.map((url, i) => (
+              <View key={url} style={styles.uploadTile}>
+                <Media fill={photoFill(url)} style={styles.uploadThumb} />
+                {i === 0 ? (
+                  <View style={styles.coverTag}>
+                    <Text style={[type.body(10, 800), styles.coverTagText]}>COVER</Text>
+                  </View>
+                ) : null}
+                <Pressable onPress={() => removePhoto(url)} style={styles.removeDot} accessibilityLabel="Remove photo">
+                  <X size={12} color="#FFFFFF" strokeWidth={3} />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
         ) : null}
 
-        <Text style={[type.body(12, 600), styles.libraryHint]}>Or pick from the library</Text>
+        <Text style={[type.body(12, 600), styles.libraryHint]}>Or pick a stock photo</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
           {FOOD_IMAGE_KEYS.map((key) => {
             const selected = key === imageKey;
@@ -247,17 +267,20 @@ const styles = StyleSheet.create({
   priceField: { flex: 1 },
   photoRow: { gap: 8, paddingBottom: 4 },
   uploadRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  uploadPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: radius.md,
-    padding: 10,
-    marginBottom: 10,
+  uploadTile: { width: 96, height: 74, marginRight: 8 },
+  uploadThumb: { width: 96, height: 74, borderRadius: radius.md },
+  coverTag: {
+    position: 'absolute', bottom: 4, left: 4,
+    backgroundColor: 'rgba(43,29,18,0.7)', borderRadius: 4,
+    paddingHorizontal: 5, paddingVertical: 1,
   },
-  uploadThumb: { width: 56, height: 44, borderRadius: 8 },
-  uploadText: { flex: 1 },
+  coverTagText: { color: '#FFFFFF', letterSpacing: 0.5 },
+  removeDot: {
+    position: 'absolute', top: -6, right: -6,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: colors.statusDanger,
+    alignItems: 'center', justifyContent: 'center',
+  },
   libraryHint: { color: colors.textMuted, marginBottom: 8 },
   thumb: {
     width: 64,

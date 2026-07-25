@@ -8,14 +8,21 @@
  * veg/non-veg mark that Indian menus need.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Check, Plus } from 'lucide-react-native';
 
 import { colors, motion, radius, shadow } from '../theme';
 import { useType } from '../theme/useType';
 import { money } from '../lib/format';
 import { Media, type MediaFill } from './Media';
+import { AutoCarousel } from './AutoCarousel';
 import { VegDot } from './Bits';
+
+/** One image, or an auto-swiping carousel when a dish has several. */
+function Photo({ image, gallery, style }: { image?: MediaFill; gallery?: MediaFill[]; style: StyleProp<ViewStyle> }) {
+  if (gallery && gallery.length > 1) return <AutoCarousel photos={gallery} style={style} showDots />;
+  return <Media fill={gallery?.[0] ?? image} style={style} />;
+}
 
 export type MenuRowProps = {
   name: string;
@@ -24,6 +31,8 @@ export type MenuRowProps = {
   oldPrice?: number;
   veg: boolean;
   image?: MediaFill;
+  /** All photos for the dish; more than one auto-swipes. */
+  gallery?: MediaFill[];
   /** Quantity already in the cart; drives the badge on the add button. */
   quantity?: number;
   available?: boolean;
@@ -40,6 +49,7 @@ export function MenuRow({
   oldPrice,
   veg,
   image,
+  gallery,
   quantity = 0,
   available = true,
   onAdd,
@@ -91,9 +101,9 @@ export function MenuRow({
         ) : null}
       </View>
 
-      {/* Photo with the add button floating over its bottom-right corner. */}
+      {/* Photo (auto-swipes if the dish has several) with the add button over it. */}
       <View style={styles.thumbWrap}>
-        <Media fill={image} style={styles.thumb} />
+        <Photo image={image} gallery={gallery} style={styles.thumb} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={inCart ? `${name}, ${quantity} in cart` : `Add ${name}`}
@@ -124,6 +134,7 @@ export function MenuCard({
   name,
   price,
   image,
+  gallery,
   badge,
   quantity = 0,
   onAdd,
@@ -131,6 +142,7 @@ export function MenuCard({
   name: string;
   price: number;
   image?: MediaFill;
+  gallery?: MediaFill[];
   badge?: string;
   quantity?: number;
   onAdd: () => void;
@@ -139,7 +151,7 @@ export function MenuCard({
   return (
     <View style={styles.card}>
       <View style={styles.cardMediaWrap}>
-        <Media fill={image} style={styles.cardMedia} />
+        <Photo image={image} gallery={gallery} style={styles.cardMedia} />
         {badge ? (
           <View style={styles.cardBadge}>
             <Text style={[type.body(11, 800), styles.cardBadgeText]}>{badge}</Text>

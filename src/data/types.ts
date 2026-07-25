@@ -14,6 +14,8 @@ export type Dish = {
   veg: boolean;
   description: string;
   image: MediaFill;
+  /** All photos for this dish (first is the cover); the app auto-swipes them. */
+  gallery?: MediaFill[];
   /** Kitchen-side availability toggle; unavailable dishes dim in the menu. */
   available?: boolean;
   /** Menu section this dish appears under; falls back to Combos / Meals. */

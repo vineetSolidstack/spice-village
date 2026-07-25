@@ -238,6 +238,7 @@ export function Storefront({
                       name={dish.name}
                       price={dish.price}
                       image={dish.image}
+                      gallery={dish.gallery}
                       badge={i === 0 ? 'Most loved' : undefined}
                       quantity={cart[dish.id] ?? 0}
                       onAdd={() => onAdd(dish.id)}
@@ -298,6 +299,7 @@ export function Storefront({
                   oldPrice={dish.oldPrice}
                   veg={dish.veg}
                   image={dish.image}
+                  gallery={dish.gallery}
                   quantity={cart[dish.id] ?? 0}
                   available={dish.available !== false}
                   onAdd={() => onAdd(dish.id)}
