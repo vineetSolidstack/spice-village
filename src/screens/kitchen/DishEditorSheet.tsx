@@ -58,6 +58,7 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [category, setCategory] = useState('');
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   // Load the draft into the form each time the sheet opens.
   useEffect(() => {
@@ -79,6 +80,7 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
       .map((m) => (m as { uri: string }).uri);
     setUploadedUrls(existing);
     setCategory(d.category ?? '');
+    setPhotoError(null);
   }, [draft]);
 
   if (!draft) return null;
@@ -91,6 +93,12 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
 
   const onSubmit = () => {
     if (!valid) return;
+    // A file:// URL means an upload hasn't finished (or failed). Saving it would
+    // show the photo only on this device, so block until it's hosted.
+    if (backend === 'supabase' && uploadedUrls.some((u) => !/^https?:\/\//.test(u))) {
+      setPhotoError('A photo is still uploading — wait a moment and try again.');
+      return;
+    }
     // Uploaded photos form the gallery; if none, use the picked library image.
     const gallery = uploadedUrls.length
       ? uploadedUrls.map((u) => photoFill(u))
@@ -122,7 +130,12 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     setUploading(true);
     const url = await uploadDishPhoto(showcaseSlug, draft.dish.id, picked);
     setUploading(false);
-    if (url) setUploadedUrls((current) => current.map((u) => (u === picked.uri ? url : u)));
+    if (url) {
+      setUploadedUrls((current) => current.map((u) => (u === picked.uri ? url : u)));
+      setPhotoError(null);
+    } else if (backend === 'supabase') {
+      setPhotoError('That photo could not be uploaded. Check your connection and try again.');
+    }
   };
 
   const removePhoto = (url: string) =>
@@ -138,8 +151,8 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
           <Button variant="ghost" onPress={onClose}>
             Cancel
           </Button>
-          <Button disabled={!valid} onPress={onSubmit}>
-            {editing ? 'Save item' : 'Add item'}
+          <Button disabled={!valid || uploading} onPress={onSubmit}>
+            {uploading ? 'Uploading…' : editing ? 'Save item' : 'Add item'}
           </Button>
         </>
       }
@@ -198,6 +211,10 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
             Camera
           </Button>
         </View>
+
+        {photoError ? (
+          <Text style={[type.body(12, 700), { color: colors.statusDanger }]}>{photoError}</Text>
+        ) : null}
 
         {uploadedUrls.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>

@@ -96,10 +96,17 @@ export function KitchenMenuScreen() {
       <DishEditorSheet
         draft={editing}
         onClose={() => setEditing(null)}
-        onSave={(dish, isCombo) => {
+        onSave={async (dish, isCombo) => {
           const creating = !dish.id;
-          saveDish(kitchen.slug, dish, isCombo);
-          showToast(creating ? `${dish.name} added` : `${dish.name} saved`, 'info');
+          const ok = await saveDish(kitchen.slug, dish, isCombo);
+          showToast(
+            ok
+              ? creating
+                ? `${dish.name} added`
+                : `${dish.name} saved`
+              : 'Saved on your device, but the server rejected it — customers won’t see this. Check you’re signed in as the owner.',
+            ok ? 'info' : 'danger',
+          );
         }}
       />
 

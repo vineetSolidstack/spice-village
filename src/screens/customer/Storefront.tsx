@@ -13,6 +13,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,6 +31,7 @@ import { colors, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
 import { useFavourites } from '../../state/favourites';
+import { useStore } from '../../data/store';
 import { money } from '../../lib/format';
 import type { Dish, Kitchen } from '../../data/types';
 
@@ -69,6 +71,7 @@ export function Storefront({
   const type = useType();
   const insets = useSafeAreaInsets();
   const favourites = useFavourites();
+  const { loading, refresh } = useStore();
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Record<string, number>>({});
@@ -138,6 +141,7 @@ export function Storefront({
         stickyHeaderIndices={[1]}
         onScroll={onScroll}
         scrollEventThrottle={32}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void refresh()} />}
         contentContainerStyle={{ paddingBottom: cartCount > 0 ? 110 : 32 }}
         showsVerticalScrollIndicator={false}
       >

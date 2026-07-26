@@ -151,8 +151,9 @@ type StoreValue = {
 
   setDishAvailability: (kitchenSlug: string, dishId: string, available: boolean) => void;
   removeDish: (kitchenSlug: string, dishId: string) => void;
-  /** Create a dish (blank id) or replace an existing one, into combos or meals. */
-  saveDish: (kitchenSlug: string, dish: Dish, isCombo: boolean) => void;
+  /** Create a dish (blank id) or replace an existing one. Returns false if
+   *  the server write failed (customers won't see the change). */
+  saveDish: (kitchenSlug: string, dish: Dish, isCombo: boolean) => Promise<boolean>;
 
   submitBulkRequest: (input: Omit<BulkRequest, 'id' | 'status'>) => void;
   answerBulkRequest: (id: string, status: BulkStatus) => void;
@@ -492,50 +493,59 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const saveDish = useCallback((kitchenSlug: string, dish: Dish, isCombo: boolean) => {
-    // A blank id means "create"; allocate one and append. Otherwise replace in place.
-    const withId: Dish = dish.id ? dish : { ...dish, id: `d${Date.now()}` };
+  const saveDish = useCallback<StoreValue['saveDish']>(
+    async (kitchenSlug, dish, isCombo) => {
+      // A blank id means "create"; allocate a temp one so the optimistic row has a key.
+      const withId: Dish = dish.id ? dish : { ...dish, id: `d${Date.now()}` };
 
-    // Write through so the change reaches every customer, then re-read to pick
-    // up the server-allocated id for newly created dishes.
-    if (isSupabaseConfigured) {
-      // Uploaded photos ride along as an ordered URL array; the cover is [0].
+      // Optimistically show the change to the owner straight away.
+      setKitchens((current) =>
+        current.map((k) => {
+          if (k.slug !== kitchenSlug) return k;
+          const menu = k.menu.filter((d) => d.id !== withId.id);
+          const combos = k.combos.filter((d) => d.id !== withId.id);
+          return isCombo
+            ? { ...k, combos: [...combos, withId], menu }
+            : { ...k, menu: [...menu, withId], combos };
+        }),
+      );
+
+      // Demo mode: nothing to persist, optimistic update is the whole story.
+      if (!isSupabaseConfigured) return true;
+
+      // Only hosted (http) photos can reach customers — a file:// path is local
+      // to this device. Dropping them here means we never save a broken image;
+      // the editor separately blocks Save until uploads finish.
       const photoUrls = (withId.gallery ?? [withId.image])
         .filter((m) => m.kind === 'photo')
-        .map((m) => (m as { uri: string }).uri);
-      void fetchApi
-        .saveDishRemote(
-          kitchenSlug,
-          {
-            id: dish.id,
-            name: withId.name,
-            description: withId.description,
-            price: withId.price,
-            oldPrice: withId.oldPrice,
-            veg: withId.veg,
-            available: withId.available,
-            category: withId.category,
-            imageUrl: photoUrls[0],
-            images: photoUrls.length ? photoUrls : undefined,
-          },
-          isCombo,
-        )
-        .then((id) => {
-          if (id && !dish.id) void refresh();
-        });
-    }
-    setKitchens((current) =>
-      current.map((k) => {
-        if (k.slug !== kitchenSlug) return k;
-        // A dish only ever lives in one list; drop it from both, then insert.
-        const menu = k.menu.filter((d) => d.id !== withId.id);
-        const combos = k.combos.filter((d) => d.id !== withId.id);
-        return isCombo
-          ? { ...k, combos: [...combos, withId], menu }
-          : { ...k, menu: [...menu, withId], combos };
-      }),
-    );
-  }, []);
+        .map((m) => (m as { uri: string }).uri)
+        .filter((u) => /^https?:\/\//.test(u));
+
+      const id = await fetchApi.saveDishRemote(
+        kitchenSlug,
+        {
+          id: dish.id,
+          name: withId.name,
+          description: withId.description,
+          price: withId.price,
+          oldPrice: withId.oldPrice,
+          veg: withId.veg,
+          available: withId.available,
+          category: withId.category,
+          imageUrl: photoUrls[0],
+          images: photoUrls.length ? photoUrls : undefined,
+        },
+        isCombo,
+      );
+
+      // Reconcile with the database either way: on success the real row (and its
+      // server id) replaces the optimistic one; on failure the optimistic change
+      // is reverted, so the owner sees the truth rather than a phantom save.
+      await refresh();
+      return id !== null;
+    },
+    [refresh],
+  );
 
   const saveWorkshop = useCallback((workshop: Workshop) => {
     const withId: Workshop = workshop.id ? workshop : { ...workshop, id: `w${Date.now()}` };
