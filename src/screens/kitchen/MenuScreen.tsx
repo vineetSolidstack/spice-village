@@ -19,23 +19,24 @@ import {
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
-import { DEMO_PROFILE } from '../../data/demo';
 import { money } from '../../lib/format';
 import { blankDish, DishEditorSheet, type DishDraft } from './DishEditorSheet';
 import type { Dish } from '../../data/types';
 
 export function KitchenMenuScreen() {
   const type = useType();
-  const { getKitchen, setDishAvailability, removeDish, saveDish } = useStore();
+  const { getKitchen, showcaseSlug, setDishAvailability, removeDish, saveDish, loading } = useStore();
   const { showToast } = useToast();
   const [confirming, setConfirming] = useState<Dish | null>(null);
   const [editing, setEditing] = useState<DishDraft | null>(null);
 
-  const kitchen = getKitchen(DEMO_PROFILE.kitchen.slug);
-  if (!kitchen) return null;
+  const kitchen = getKitchen(showcaseSlug);
+  // Never blank the screen: even before the kitchen loads, the owner can add
+  // their first item. Saves target the showcase slug either way.
+  const saveSlug = kitchen?.slug ?? showcaseSlug;
 
-  const combos = kitchen.combos.map((d) => ({ dish: d, isCombo: true }));
-  const meals = kitchen.menu.map((d) => ({ dish: d, isCombo: false }));
+  const combos = (kitchen?.combos ?? []).map((d) => ({ dish: d, isCombo: true }));
+  const meals = (kitchen?.menu ?? []).map((d) => ({ dish: d, isCombo: false }));
   const items = [...combos, ...meals];
 
   return (
@@ -54,6 +55,20 @@ export function KitchenMenuScreen() {
       />
 
       <View style={styles.body}>
+        {items.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={[type.body(15, 700), { color: colors.textBody, marginBottom: 4 }]}>
+              {loading ? 'Loading your menu…' : 'No items yet'}
+            </Text>
+            {!loading ? (
+              <Text style={[type.body(13, 600), { color: colors.textMuted, textAlign: 'center' }]}>
+                Tap “Add item” to put your first combo or dish on the menu. Set its
+                units per day so today’s stock counts down as customers order.
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {items.map(({ dish, isCombo }) => (
           <View
             key={dish.id}
@@ -75,7 +90,7 @@ export function KitchenMenuScreen() {
 
             <Switch
               checked={dish.available !== false}
-              onChange={(value) => setDishAvailability(kitchen.slug, dish.id, value)}
+              onChange={(value) => setDishAvailability(saveSlug, dish.id, value)}
             />
 
             <IconButton
@@ -98,7 +113,7 @@ export function KitchenMenuScreen() {
         onClose={() => setEditing(null)}
         onSave={async (dish, isCombo, unitsChange) => {
           const creating = !dish.id;
-          const ok = await saveDish(kitchen.slug, dish, isCombo, unitsChange);
+          const ok = await saveDish(saveSlug, dish, isCombo, unitsChange);
           showToast(
             ok
               ? creating
@@ -123,7 +138,7 @@ export function KitchenMenuScreen() {
               variant="danger"
               onPress={() => {
                 if (confirming) {
-                  removeDish(kitchen.slug, confirming.id);
+                  removeDish(saveSlug, confirming.id);
                   showToast(`${confirming.name} removed`, 'info');
                 }
                 setConfirming(null);
@@ -154,6 +169,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dimmed: { opacity: 0.55 },
+  empty: { paddingVertical: 48, paddingHorizontal: 24, alignItems: 'center' },
   thumb: { width: 44, height: 44, borderRadius: 12 },
   rowBody: { flex: 1, minWidth: 0 },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

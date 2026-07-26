@@ -208,6 +208,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [managedKitchens, setManagedKitchens] = useState<ManagedKitchen[]>(seed(MANAGED_KITCHENS, []));
   const [users] = useState<PlatformUser[]>(seed(PLATFORM_USERS, []));
   const [acceptingOrders, setAcceptingOrders] = useState(true);
+  // The kitchen the app showcases. Starts as the constant, but is updated to
+  // the actually-loaded kitchen on refresh — its real slug may differ (e.g. a
+  // kitchen created through the application flow gets a suffixed slug).
+  const [showcaseSlug, setShowcaseSlug] = useState<string>(SHOWCASE_KITCHEN_SLUG);
   // Today's total units (sum across items). Empty until the owner sets item units.
   const [dailyStock, setDailyStock] = useState<{ capacity: number; used: number }>(
     seed({ capacity: 50, used: 0 }, { capacity: 0, used: 0 }),
@@ -341,6 +345,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const showcase =
         (settingsR.status === 'fulfilled' && settingsR.value?.showcaseSlug) ||
         catalogue[0].slug;
+      // Point the whole app at the kitchen that actually loaded.
+      setShowcaseSlug(showcase);
 
       // Merge today's per-item remaining units into the showcase kitchen's menu,
       // so each combo can show "N left" and sell out on its own.
@@ -725,7 +731,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       backend: isSupabaseConfigured ? 'supabase' : 'demo',
       appMode,
       setAppMode,
-      showcaseSlug: SHOWCASE_KITCHEN_SLUG,
+      showcaseSlug,
       business,
       updateBusiness,
       loading,
@@ -767,6 +773,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [
       appMode,
       setAppMode,
+      showcaseSlug,
       business,
       updateBusiness,
       loading,

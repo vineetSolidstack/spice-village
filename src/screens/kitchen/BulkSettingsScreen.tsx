@@ -30,7 +30,7 @@ import type { Dish } from '../../data/types';
 
 export function KitchenBulkScreen() {
   const type = useType();
-  const { getKitchen, showcaseSlug, setBulkSettings, saveDish, backend } = useStore();
+  const { getKitchen, showcaseSlug, setBulkSettings, saveDish, backend, loading } = useStore();
   const { showToast } = useToast();
 
   const kitchen = getKitchen(showcaseSlug);
@@ -46,7 +46,24 @@ export function KitchenBulkScreen() {
     setNote(kitchen.bulkNote ?? '');
   }, [kitchen]);
 
-  if (!kitchen) return null;
+  if (!kitchen) {
+    return (
+      <Screen bottomInset={16}>
+        <PortalHeader title="Bulk orders" />
+        <View style={styles.body}>
+          <Text style={[type.body(15, 700), { color: colors.textBody, marginBottom: 4 }]}>
+            {loading ? 'Loading…' : 'No menu yet'}
+          </Text>
+          {!loading ? (
+            <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
+              Add your dishes on the Menu tab first, then come back to set which
+              ones you’ll batch-cook for bulk orders and their per-unit prices.
+            </Text>
+          ) : null}
+        </View>
+      </Screen>
+    );
+  }
 
   const dishes = [...kitchen.combos, ...kitchen.menu];
 

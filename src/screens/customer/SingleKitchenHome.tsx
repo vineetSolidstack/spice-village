@@ -6,20 +6,34 @@
  * brand reads as the app itself.
  */
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme';
+import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
 import { useCart } from '../../state/cart';
 import { Storefront } from './Storefront';
 import type { CustomerStackScreen } from '../../navigation/types';
 
 export function SingleKitchenHome({ navigation }: CustomerStackScreen<'Home'>) {
-  const { getKitchen, showcaseSlug, business } = useStore();
+  const { getKitchen, showcaseSlug, business, loading } = useStore();
   const cart = useCart();
+  const type = useType();
 
   const kitchen = getKitchen(showcaseSlug);
-  if (!kitchen) return <View style={styles.root} />;
+  if (!kitchen) {
+    return (
+      <View style={styles.center}>
+        {loading ? (
+          <ActivityIndicator color={colors.actionPrimary} />
+        ) : (
+          <Text style={[type.body(14, 600), { color: colors.textMuted, textAlign: 'center' }]}>
+            {business.kitchenName} is getting set up.{'\n'}Please check back in a moment.
+          </Text>
+        )}
+      </View>
+    );
+  }
 
   return (
     <Storefront
@@ -40,5 +54,11 @@ export function SingleKitchenHome({ navigation }: CustomerStackScreen<'Home'>) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surfacePage },
+  center: {
+    flex: 1,
+    backgroundColor: colors.surfacePage,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
 });
