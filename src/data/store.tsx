@@ -163,7 +163,7 @@ type StoreValue = {
     /** How to apply the units field: change the everyday default, override today
      * only, clear the limit, or leave units untouched. */
     unitsChange?: { units: number | null; repeat: boolean } | null,
-  ) => Promise<boolean>;
+  ) => Promise<{ ok: boolean; error?: string }>;
 
   submitBulkRequest: (input: Omit<BulkRequest, 'id' | 'status'>) => void;
   answerBulkRequest: (id: string, status: BulkStatus) => void;
@@ -570,7 +570,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       );
 
       // Demo mode: nothing to persist, optimistic update is the whole story.
-      if (!isSupabaseConfigured) return true;
+      if (!isSupabaseConfigured) return { ok: true };
 
       // Only hosted (http) photos can reach customers — a file:// path is local
       // to this device. Dropping them here means we never save a broken image;
@@ -580,7 +580,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .map((m) => (m as { uri: string }).uri)
         .filter((u) => /^https?:\/\//.test(u));
 
-      const id = await fetchApi.saveDishRemote(
+      const { id, error } = await fetchApi.saveDishRemote(
         kitchenSlug,
         {
           id: dish.id,
@@ -607,7 +607,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // server id) replaces the optimistic one; on failure the optimistic change
       // is reverted, so the owner sees the truth rather than a phantom save.
       await refresh();
-      return id !== null;
+      return { ok: id !== null, error: error ?? undefined };
     },
     [refresh],
   );

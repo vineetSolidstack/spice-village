@@ -113,14 +113,14 @@ export function KitchenMenuScreen() {
         onClose={() => setEditing(null)}
         onSave={async (dish, isCombo, unitsChange) => {
           const creating = !dish.id;
-          const ok = await saveDish(saveSlug, dish, isCombo, unitsChange);
+          const res = await saveDish(saveSlug, dish, isCombo, unitsChange);
           showToast(
-            ok
+            res.ok
               ? creating
                 ? `${dish.name} added`
                 : `${dish.name} saved`
-              : 'Saved on your device, but the server rejected it — customers won’t see this. Check you’re signed in as the owner.',
-            ok ? 'info' : 'danger',
+              : `Server rejected it: ${res.error ?? 'unknown error'}`,
+            res.ok ? 'info' : 'danger',
           );
         }}
       />

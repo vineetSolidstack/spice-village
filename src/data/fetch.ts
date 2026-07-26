@@ -375,12 +375,12 @@ export async function saveDishRemote(
     veg: boolean; available?: boolean; category?: string; imageUrl?: string; images?: string[];
   },
   isCombo: boolean,
-): Promise<string | null> {
+): Promise<{ id: string | null; error: string | null }> {
   try {
     const db = requireSupabase();
     const { data: kitchen, error: kErr } = await db
       .from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
-    if (kErr || !kitchen) throw kErr ?? new Error('Kitchen not found');
+    if (kErr || !kitchen) throw kErr ?? new Error(`Kitchen "${kitchenSlug}" not found`);
 
     const row = {
       kitchen_id: kitchen.id,
@@ -401,14 +401,16 @@ export async function saveDishRemote(
     if (isUuid) {
       const { error } = await db.from('dishes').update(row).eq('id', dish.id);
       if (error) throw error;
-      return dish.id;
+      return { id: dish.id, error: null };
     }
     const { data, error } = await db.from('dishes').insert(row).select('id').single();
     if (error) throw error;
-    return (data as { id: string }).id;
+    return { id: (data as { id: string }).id, error: null };
   } catch (error) {
     console.warn('[spice-route] saveDishRemote failed', error);
-    return null;
+    const message =
+      (error as { message?: string })?.message ?? String(error ?? 'Unknown error');
+    return { id: null, error: message };
   }
 }
 
