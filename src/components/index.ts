@@ -3,6 +3,7 @@ export * from './Badge';
 export * from './AutoCarousel';
 export * from './Bits';
 export * from './BrandLogo';
+export * from './BrandSplash';
 export * from './Button';
 export * from './Card';
 export * from './Checkbox';

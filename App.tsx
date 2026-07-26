@@ -5,12 +5,12 @@
  * resolution depends on it, then the store, then the cart (which reads the
  * store's kitchen catalogue).
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ToastProvider } from './src/components';
+import { BrandSplash, ToastProvider } from './src/components';
 import { LanguageProvider } from './src/i18n';
 import { StoreProvider } from './src/data/store';
 import { CartProvider } from './src/state/cart';
@@ -21,9 +21,12 @@ import { colors, useFonts } from './src/theme';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts();
+  // The branded door-opening animation plays once per cold start, on top of the
+  // app. It's dismissed when the reveal finishes.
+  const [splashDone, setSplashDone] = useState(false);
 
   // Hold the cream background until the trilingual faces are ready, so text
-  // never flashes in a fallback system font.
+  // never flashes in a fallback system font (and the wordmark renders right).
   if (!fontsLoaded && !fontError) {
     return <View style={styles.splash} />;
   }
@@ -38,6 +41,7 @@ export default function App() {
               <ToastProvider>
                 <StatusBar style="dark" />
                 <RootNavigator />
+                {!splashDone ? <BrandSplash onDone={() => setSplashDone(true)} /> : null}
               </ToastProvider>
             </AuthProvider>
           </FavouritesProvider>
