@@ -2,7 +2,7 @@
  * Profile — avatar card, action rows, the language picker, and the switch into
  * the partner portals.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Bell, ChefHat, ChevronRight, Globe, Info, KeyRound, Receipt } from 'lucide-react-native';
 
@@ -23,7 +23,14 @@ import { useLanguage } from '../../i18n';
 import { useStore } from '../../data/store';
 import { plural } from '../../lib/format';
 import { ROLE_LABELS, useAuth, type Role } from '../../state/auth';
-import { claimKitchenInvite, fetchMarketingOptIn, setMarketingOptIn } from '../../data/fetch';
+import {
+  claimKitchenInvite,
+  fetchMarketingOptIn,
+  setMarketingOptIn,
+  submitKitchenApplication,
+  fetchMyApplication,
+  type MyApplication,
+} from '../../data/fetch';
 
 const PARTNER_ROLES: Role[] = ['kitchen', 'instructor', 'super'];
 
@@ -48,6 +55,63 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimBusy, setClaimBusy] = useState(false);
   const [offers, setOffers] = useState(true);
+
+  // Kitchen application state machine: none → pending → approved → active.
+  const [myApp, setMyApp] = useState<MyApplication | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [showApproved, setShowApproved] = useState(false);
+  const [appBusy, setAppBusy] = useState(false);
+  const [appName, setAppName] = useState(user?.name ?? '');
+  const [appKitchen, setAppKitchen] = useState('');
+  const [appArea, setAppArea] = useState('');
+  const [appCuisine, setAppCuisine] = useState('');
+  const [appPhone, setAppPhone] = useState('');
+
+  const reloadApplication = useCallback(async () => {
+    if (demo) return;
+    const app = await fetchMyApplication();
+    setMyApp(app);
+  }, [demo]);
+
+  useEffect(() => {
+    void reloadApplication();
+  }, [reloadApplication]);
+
+  const onApply = async () => {
+    if (!appKitchen.trim() || !appName.trim() || appBusy) return;
+    setAppBusy(true);
+    const id = await submitKitchenApplication({
+      fullName: appName.trim(),
+      kitchenName: appKitchen.trim(),
+      area: appArea.trim(),
+      cuisine: appCuisine.trim(),
+      phone: appPhone.trim(),
+    });
+    setAppBusy(false);
+    if (!id) {
+      showToast('Could not submit — you may already have an application in progress.', 'danger');
+      return;
+    }
+    setApplying(false);
+    await reloadApplication();
+    showToast('Application sent — you’ll see your code here once it’s approved.', 'info');
+  };
+
+  const onOpenMyKitchen = async () => {
+    if (!myApp?.inviteCode || claimBusy) return;
+    setClaimBusy(true);
+    const result = await claimKitchenInvite(myApp.inviteCode);
+    setClaimBusy(false);
+    if (!result) {
+      showToast('Could not open the kitchen — try again.', 'danger');
+      return;
+    }
+    setShowApproved(false);
+    await refreshRoles();
+    await reloadApplication();
+    void refresh();
+    showToast(`${result.name} is yours — switch to the kitchen portal`, 'info');
+  };
 
   // Marketing preference lives on the profile, so it follows the account.
   useEffect(() => {
@@ -102,13 +166,35 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
     },
     ...(demo || roles.includes('kitchen')
       ? []
-      : [
-          {
-            icon: <KeyRound size={20} color={colors.textBrand} strokeWidth={1.75} />,
-            label: 'Claim a kitchen',
-            onPress: () => setClaiming(true),
-          },
-        ]),
+      : myApp?.status === 'approved'
+        ? [
+            {
+              icon: <ChefHat size={20} color={colors.textBrand} strokeWidth={1.75} />,
+              label: 'You’re approved — open your kitchen',
+              onPress: () => setShowApproved(true),
+            },
+          ]
+        : myApp?.status === 'pending'
+          ? [
+              {
+                icon: <KeyRound size={20} color={colors.textMuted} strokeWidth={1.75} />,
+                label: 'Kitchen application under review',
+                onPress: () =>
+                  showToast('Your application is under review — you’ll get a code here once approved.', 'info'),
+              },
+            ]
+          : [
+              {
+                icon: <ChefHat size={20} color={colors.textBrand} strokeWidth={1.75} />,
+                label: 'Run a kitchen',
+                onPress: () => setApplying(true),
+              },
+              {
+                icon: <KeyRound size={20} color={colors.textBrand} strokeWidth={1.75} />,
+                label: 'I have an invite code',
+                onPress: () => setClaiming(true),
+              },
+            ]),
     ...(availablePortals.length
       ? [
           {
@@ -220,6 +306,58 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
         />
       </Dialog>
 
+      <Dialog
+        open={applying}
+        onClose={() => setApplying(false)}
+        title="Run a kitchen"
+        footer={
+          <>
+            <Button variant="ghost" onPress={() => setApplying(false)}>
+              Cancel
+            </Button>
+            <Button disabled={!appKitchen.trim() || !appName.trim() || appBusy} onPress={() => void onApply()}>
+              {appBusy ? 'Sending…' : 'Send application'}
+            </Button>
+          </>
+        }
+      >
+        <Text style={[type.body(13, 600), styles.dialogHint]}>
+          Tell us about your kitchen. Once it’s approved, your invite code appears
+          right here and unlocks the kitchen portal.
+        </Text>
+        <Input label="Your name" value={appName} onChangeText={setAppName} />
+        <Input label="Kitchen name" placeholder="Amma’s Kitchen" value={appKitchen} onChangeText={setAppKitchen} style={styles.stackField} />
+        <Input label="Area" placeholder="Tirupur" value={appArea} onChangeText={setAppArea} style={styles.stackField} />
+        <Input label="Cuisine" placeholder="South Indian" value={appCuisine} onChangeText={setAppCuisine} style={styles.stackField} />
+        <Input label="Phone" placeholder="9xxxxxxxxx" keyboardType="phone-pad" value={appPhone} onChangeText={setAppPhone} style={styles.stackField} />
+      </Dialog>
+
+      <Dialog
+        open={showApproved}
+        onClose={() => setShowApproved(false)}
+        title="Your kitchen is approved 🎉"
+        footer={
+          <>
+            <Button variant="ghost" onPress={() => setShowApproved(false)}>
+              Later
+            </Button>
+            <Button disabled={claimBusy} onPress={() => void onOpenMyKitchen()}>
+              {claimBusy ? 'Opening…' : 'Open my kitchen'}
+            </Button>
+          </>
+        }
+      >
+        <Text style={[type.body(13, 600), styles.dialogHint]}>
+          {myApp?.kitchenName ? `${myApp.kitchenName} is ready.` : 'Your kitchen is ready.'} Your invite code:
+        </Text>
+        <View style={styles.codeBox}>
+          <Text style={type.display(24, 800)}>{myApp?.inviteCode ?? ''}</Text>
+        </View>
+        <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+          Tap “Open my kitchen” to claim it and switch to the kitchen portal.
+        </Text>
+      </Dialog>
+
       <Dialog open={showBookings} onClose={() => setShowBookings(false)} title={t.bookings}>
         {myBookings.length === 0 ? (
           <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
@@ -301,6 +439,14 @@ const styles = StyleSheet.create({
   rowLabel: { flex: 1 },
   languageHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   dialogHint: { color: colors.textMuted, marginBottom: 12 },
+  stackField: { marginTop: 10 },
+  codeBox: {
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   roleList: { gap: 10 },
   feed: { gap: 12 },
   feedRow: {

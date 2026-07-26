@@ -1,7 +1,7 @@
 /**
  * Super-admin portal — approvals, kitchen states, users, and curation.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 
@@ -23,6 +23,12 @@ import { gradient } from '../../components/Media';
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
+import {
+  fetchPendingApplications,
+  approveKitchenApplication,
+  rejectKitchenApplication,
+  type PendingApplication,
+} from '../../data/fetch';
 import { SHOWCASE_KITCHEN_NAME } from '../../data/demo';
 import { plural } from '../../lib/format';
 import { useAuth } from '../../state/auth';
@@ -36,22 +42,83 @@ const PLACEHOLDER = gradient('#E8A33D', '#C1440E');
 
 export function SuperApprovalsScreen() {
   const type = useType();
-  const { approvals, decideApproval } = useStore();
+  const { approvals, decideApproval, backend } = useStore();
   const { showToast } = useToast();
+
+  // Real kitchen applications from would-be owners (loaded from the backend).
+  const [apps, setApps] = useState<PendingApplication[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const loadApps = useCallback(async () => {
+    if (backend !== 'supabase') return;
+    setApps(await fetchPendingApplications());
+  }, [backend]);
+
+  useEffect(() => {
+    void loadApps();
+  }, [loadApps]);
+
+  const onApprove = async (app: PendingApplication) => {
+    setBusyId(app.id);
+    const codeIssued = await approveKitchenApplication(app.id);
+    setBusyId(null);
+    if (!codeIssued) {
+      showToast('Could not approve — try again.', 'danger');
+      return;
+    }
+    setApps((current) => current.filter((a) => a.id !== app.id));
+    // The applicant sees the code in their own app; this confirms it for you.
+    showToast(`${app.kitchenName} approved · code ${codeIssued}`, 'info');
+  };
+
+  const onReject = async (app: PendingApplication) => {
+    setBusyId(app.id);
+    const ok = await rejectKitchenApplication(app.id);
+    setBusyId(null);
+    if (ok) {
+      setApps((current) => current.filter((a) => a.id !== app.id));
+      showToast(`${app.kitchenName} declined`, 'info');
+    }
+  };
+
+  const totalPending = approvals.length + apps.length;
 
   return (
     <Screen bottomInset={16}>
       <PortalHeader
         title="Approvals"
         right={
-          <Badge tone={approvals.length ? 'warn' : 'success'}>
-            {`${approvals.length} pending`}
+          <Badge tone={totalPending ? 'warn' : 'success'}>
+            {`${totalPending} pending`}
           </Badge>
         }
       />
 
       <View style={styles.body}>
-        {approvals.length === 0 ? (
+        {apps.map((app) => (
+          <View key={app.id} style={[styles.card, shadow.card]}>
+            <View style={styles.cardHead}>
+              <Text style={[type.display(16, 700), styles.cardTitle]} numberOfLines={1}>
+                {app.kitchenName}
+              </Text>
+              <Badge tone="brand">Kitchen</Badge>
+            </View>
+            <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
+              {app.fullName} · {app.cuisine} · {app.area}
+            </Text>
+            <Text style={[type.body(12, 600), { color: colors.textMuted }]}>{app.phone}</Text>
+            <View style={styles.actions}>
+              <Button size="sm" disabled={busyId === app.id} onPress={() => void onApprove(app)}>
+                {busyId === app.id ? 'Approving…' : 'Approve & issue code'}
+              </Button>
+              <Button size="sm" variant="danger" disabled={busyId === app.id} onPress={() => void onReject(app)}>
+                Decline
+              </Button>
+            </View>
+          </View>
+        ))}
+
+        {totalPending === 0 ? (
           <Text style={[type.body(14, 600), styles.empty]}>All caught up. Queue is empty.</Text>
         ) : null}
 

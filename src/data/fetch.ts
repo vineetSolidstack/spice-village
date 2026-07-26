@@ -510,10 +510,115 @@ export async function claimKitchenInvite(code: string): Promise<{ name: string }
     const { data, error } = await db.rpc('claim_kitchen_invite', { p_code: code });
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
+    // Follow the application status through to 'active' (best-effort).
+    void db.rpc('mark_application_active', { p_code: code });
     return row ? { name: row.kitchen_name } : null;
   } catch (error) {
     console.warn('[spice-route] claimKitchenInvite failed', error);
     return null;
+  }
+}
+
+/* ------------------------------------------------- kitchen applications --- */
+
+export type MyApplication = {
+  id: string;
+  status: 'pending' | 'approved' | 'active' | 'rejected';
+  kitchenName: string;
+  inviteCode: string | null;
+};
+
+export type PendingApplication = {
+  id: string;
+  fullName: string;
+  kitchenName: string;
+  area: string;
+  cuisine: string;
+  phone: string;
+  createdAt: string;
+};
+
+/** Applicant submits their details to run a kitchen. Returns the new id. */
+export async function submitKitchenApplication(input: {
+  fullName: string; kitchenName: string; area: string; cuisine: string; phone: string;
+}): Promise<string | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('submit_kitchen_application', {
+      p_full_name: input.fullName,
+      p_kitchen_name: input.kitchenName,
+      p_area: input.area,
+      p_cuisine: input.cuisine,
+      p_phone: input.phone,
+    });
+    if (error) throw error;
+    return (data as string) ?? null;
+  } catch (error) {
+    console.warn('[spice-route] submitKitchenApplication failed', error);
+    return null;
+  }
+}
+
+/** The caller's latest application, or null if they've never applied. */
+export async function fetchMyApplication(): Promise<MyApplication | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('my_kitchen_application');
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return row
+      ? { id: row.id, status: row.status, kitchenName: row.kitchen_name, inviteCode: row.invite_code }
+      : null;
+  } catch (error) {
+    console.warn('[spice-route] fetchMyApplication failed', error);
+    return null;
+  }
+}
+
+/** Super-admin: pending applications awaiting a decision. */
+export async function fetchPendingApplications(): Promise<PendingApplication[]> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('pending_kitchen_applications');
+    if (error) throw error;
+    return ((data ?? []) as Record<string, string>[]).map((r) => ({
+      id: r.id,
+      fullName: r.full_name,
+      kitchenName: r.kitchen_name,
+      area: r.area,
+      cuisine: r.cuisine,
+      phone: r.phone,
+      createdAt: r.created_at,
+    }));
+  } catch (error) {
+    console.warn('[spice-route] fetchPendingApplications failed', error);
+    return [];
+  }
+}
+
+/** Super-admin approves; returns the invite code shown to the applicant. */
+export async function approveKitchenApplication(id: string): Promise<string | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('approve_kitchen_application', { p_id: id });
+    if (error) throw error;
+    return (data as string) ?? null;
+  } catch (error) {
+    console.warn('[spice-route] approveKitchenApplication failed', error);
+    return null;
+  }
+}
+
+/** Super-admin rejects an application. */
+export async function rejectKitchenApplication(id: string): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.rpc('reject_kitchen_application', { p_id: id });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] rejectKitchenApplication failed', error);
+    return false;
   }
 }
 
