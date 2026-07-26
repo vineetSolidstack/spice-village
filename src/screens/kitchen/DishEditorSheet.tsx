@@ -160,7 +160,12 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
       setUploadedUrls((current) => current.map((u) => (u === picked.uri ? url : u)));
       setPhotoError(null);
     } else if (backend === 'supabase') {
-      setPhotoError('That photo could not be uploaded. Check your connection and try again.');
+      // Drop the failed local photo so it can't block the save — the item can
+      // still be added without it, and they can retry once storage is fixed.
+      setUploadedUrls((current) => current.filter((u) => u !== picked.uri));
+      setPhotoError(
+        'Photo upload was blocked. Run supabase/storage_fix.sql and make sure you’re signed in as the kitchen owner (or super-admin). You can still save the item without a photo for now.',
+      );
     }
   };
 
