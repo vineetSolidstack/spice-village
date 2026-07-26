@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "181883246484",
+    "project_id": "nandhan-delight-a2dc3",
+    "storage_bucket": "nandhan-delight-a2dc3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181883246484:android:cbabe332f3c297d3896181",
+        "android_client_info": {
+          "package_name": "com.spiceroute.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCl132rCZmf73EZTjHLS_GmDtmdB0xCPwE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

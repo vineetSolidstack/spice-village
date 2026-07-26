@@ -25,6 +25,7 @@
     },
     "android": {
       "package": "com.spiceroute.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#C1440E",
         "foregroundImage": "./assets/android-icon-foreground.png",
