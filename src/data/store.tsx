@@ -549,11 +549,33 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const saveWorkshop = useCallback((workshop: Workshop) => {
     const withId: Workshop = workshop.id ? workshop : { ...workshop, id: `w${Date.now()}` };
+    // Optimistic local update for the instructor.
     setWorkshops((current) => {
       const exists = current.some((w) => w.id === withId.id);
       return exists ? current.map((w) => (w.id === withId.id ? withId : w)) : [...current, withId];
     });
-  }, []);
+    // Persist so the class — and its cover — reaches customers.
+    if (isSupabaseConfigured) {
+      const imageUrl = withId.image.kind === 'photo' ? withId.image.uri : undefined;
+      void fetchApi
+        .saveWorkshopRemote({
+          id: workshop.id || null,
+          title: withId.title,
+          price: withId.price,
+          duration: withId.duration,
+          status: withId.status,
+          imageUrl,
+          sessions: withId.sessions.map((sn) => ({
+            when_label: sn.when,
+            capacity: sn.capacity,
+            booked: sn.booked,
+          })),
+        })
+        .then((id) => {
+          if (id) void refresh();
+        });
+    }
+  }, [refresh]);
 
   const setBulkSettings = useCallback<StoreValue['setBulkSettings']>((kitchenSlug, patch) => {
     setKitchens((current) =>

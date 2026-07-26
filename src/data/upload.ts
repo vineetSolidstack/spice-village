@@ -97,3 +97,28 @@ export async function saveDishPhotoPath(dishId: string, url: string): Promise<bo
     return false;
   }
 }
+
+/**
+ * Upload a workshop cover photo. Keyed <user-id>/<file> so an instructor can
+ * only write in their own folder. Returns the public URL, or null on failure.
+ */
+export async function uploadWorkshopPhoto(userId: string, photo: PickedPhoto): Promise<string | null> {
+  try {
+    const db = requireSupabase();
+    const response = await fetch(photo.uri);
+    const bytes = await response.arrayBuffer();
+    if (!bytes.byteLength) throw new Error('Picked photo was empty');
+
+    const key = `${userId}/${Date.now()}.jpg`;
+    const { error } = await db.storage.from('workshop-photos').upload(key, bytes, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    });
+    if (error) throw error;
+    const { data } = db.storage.from('workshop-photos').getPublicUrl(key);
+    return data.publicUrl ?? null;
+  } catch (error) {
+    console.warn('[spice-route] uploadWorkshopPhoto failed', error);
+    return null;
+  }
+}

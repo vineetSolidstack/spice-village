@@ -7,15 +7,14 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Camera, Check, ImagePlus, X } from 'lucide-react-native';
+import { Camera, ImagePlus, X } from 'lucide-react-native';
 
 import { Button, Checkbox, Dialog, Input, Media, Switch, VegDot } from '../../components';
-import { asset, photo as photoFill } from '../../components/Media';
+import { gradient, photo as photoFill } from '../../components/Media';
 import { captureDishPhoto, pickDishPhoto, uploadDishPhoto } from '../../data/upload';
 import { useStore } from '../../data/store';
-import { colors, palette, radius } from '../../theme';
+import { colors, radius } from '../../theme';
 import { useType } from '../../theme/useType';
-import { FOOD_IMAGES, FOOD_IMAGE_KEYS } from '../../data/images';
 import type { Dish } from '../../data/types';
 
 export type DishDraft = { dish: Dish; isCombo: boolean };
@@ -36,7 +35,7 @@ export function blankDish(): Dish {
     oldPrice: 0,
     veg: true,
     description: '',
-    image: asset(FOOD_IMAGES[FOOD_IMAGE_KEYS[0]]),
+    image: gradient('#E8A33D', '#C1440E'),
     available: true,
   };
 }
@@ -52,7 +51,6 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   const [veg, setVeg] = useState(true);
   const [isCombo, setIsCombo] = useState(false);
   const [available, setAvailable] = useState(true);
-  const [imageKey, setImageKey] = useState(FOOD_IMAGE_KEYS[0]);
   // Real uploaded photos win over the bundled library. Several can be added;
   // the customer app auto-swipes through them.
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
@@ -71,9 +69,6 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     setVeg(d.veg);
     setIsCombo(draft.isCombo);
     setAvailable(d.available !== false);
-    // Match the current image back to a library key if it is one of ours.
-    const match = FOOD_IMAGE_KEYS.find((k) => FOOD_IMAGES[k] === (d.image as { source?: unknown }).source);
-    setImageKey(match ?? FOOD_IMAGE_KEYS[0]);
     // Existing uploaded photos come back on the gallery as photo fills.
     const existing = (d.gallery ?? [d.image])
       .filter((m) => m.kind === 'photo')
@@ -102,7 +97,7 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     // Uploaded photos form the gallery; if none, use the picked library image.
     const gallery = uploadedUrls.length
       ? uploadedUrls.map((u) => photoFill(u))
-      : [asset(FOOD_IMAGES[imageKey])];
+      : [gradient('#E8A33D', '#C1440E')];
     onSave(
       {
         ...draft.dish,
@@ -232,28 +227,11 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
               </View>
             ))}
           </ScrollView>
-        ) : null}
-
-        <Text style={[type.body(12, 600), styles.libraryHint]}>Or pick a stock photo</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
-          {FOOD_IMAGE_KEYS.map((key) => {
-            const selected = key === imageKey;
-            return (
-              <Pressable key={key} onPress={() => setImageKey(key)} accessibilityLabel={`Photo ${key}`}>
-                <Media
-                  fill={asset(FOOD_IMAGES[key])}
-                  style={[styles.thumb, selected ? styles.thumbSelected : null]}
-                >
-                  {selected ? (
-                    <View style={styles.thumbCheck}>
-                      <Check size={14} color="#FFFFFF" strokeWidth={3} />
-                    </View>
-                  ) : null}
-                </Media>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        ) : (
+          <Text style={[type.body(12, 600), styles.libraryHint]}>
+            No photo yet — upload your own picture of this dish.
+          </Text>
+        )}
 
         <View style={styles.toggles}>
           <Checkbox checked={veg} onChange={setVeg} label="Vegetarian" />
@@ -299,24 +277,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   libraryHint: { color: colors.textMuted, marginBottom: 8 },
-  thumb: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'flex-end',
-  },
-  thumbSelected: { borderColor: palette.paprika600 },
-  thumbCheck: {
-    margin: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.actionPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   toggles: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
   vegPreview: { marginLeft: 'auto' },
   switchRow: {

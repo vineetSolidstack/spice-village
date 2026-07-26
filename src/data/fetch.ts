@@ -823,3 +823,34 @@ export async function setDailyCapacityRemote(kitchenSlug: string, capacity: numb
     return false;
   }
 }
+
+/* ------------------------------------------------------ save workshop ----- */
+
+/** Persist a workshop (create or update) and its sessions. Returns the id. */
+export async function saveWorkshopRemote(input: {
+  id: string | null;
+  title: string;
+  price: number;
+  duration: string;
+  status: 'Live' | 'Draft';
+  imageUrl?: string;
+  sessions: { when_label: string; capacity: number; booked: number }[];
+}): Promise<string | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('save_workshop', {
+      p_id: input.id && /^[0-9a-f]{8}-/i.test(input.id) ? input.id : null,
+      p_title: input.title,
+      p_price: input.price,
+      p_duration: input.duration,
+      p_status: input.status === 'Live' ? 'live' : 'draft',
+      p_image_url: input.imageUrl ?? null,
+      p_sessions: input.sessions,
+    });
+    if (error) throw error;
+    return typeof data === 'string' ? data : null;
+  } catch (e) {
+    console.warn('[spice-route] saveWorkshopRemote failed', e);
+    return null;
+  }
+}
