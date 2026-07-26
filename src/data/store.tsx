@@ -95,6 +95,7 @@ export type Business = {
 };
 
 const BUSINESS_KEY = 'spiceroute.business';
+const CATEGORIES_KEY = 'spiceroute.categories';
 
 type StoreValue = {
   /** Source of the data currently on screen. */
@@ -225,6 +226,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     void AsyncStorage.getItem(APP_MODE_KEY).then((saved) => {
       if (!cancelled && (saved === 'single' || saved === 'marketplace')) setAppModeState(saved);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Restore the owner's cuisine categories on boot so they survive restarts.
+  useEffect(() => {
+    let cancelled = false;
+    void AsyncStorage.getItem(CATEGORIES_KEY).then((saved) => {
+      if (cancelled || !saved) return;
+      try {
+        const parsed = JSON.parse(saved) as string[];
+        if (Array.isArray(parsed) && parsed.length) setCategories(parsed);
+      } catch {
+        // A corrupt entry shouldn't stop boot; the default list stands.
+      }
     });
     return () => {
       cancelled = true;
@@ -654,7 +672,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addCategory = useCallback((name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    setCategories((current) => (current.includes(trimmed) ? current : [...current, trimmed]));
+    setCategories((current) => {
+      if (current.includes(trimmed)) return current;
+      const next = [...current, trimmed];
+      // Persist so the list survives an app restart.
+      void AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const submitBulkRequest = useCallback<StoreValue['submitBulkRequest']>((input) => {
