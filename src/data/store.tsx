@@ -114,6 +114,10 @@ type StoreValue = {
 
   kitchens: Kitchen[];
   slots: Slot[];
+  /** Shared unit pool for today; every slot shows this as remaining. */
+  dailyStock: { capacity: number; used: number };
+  /** Owner sets today's total units. */
+  setDailyCapacity: (units: number) => void;
   /** Orders belonging to the signed-in customer, newest first. */
   customerOrders: Order[];
   /** Orders queued at the kitchen the owner portal is signed into. */
@@ -188,6 +192,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [managedKitchens, setManagedKitchens] = useState<ManagedKitchen[]>(MANAGED_KITCHENS);
   const [users] = useState<PlatformUser[]>(PLATFORM_USERS);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
+  // Shared daily pool. Demo starts with 50 units, none used.
+  const [dailyStock, setDailyStock] = useState<{ capacity: number; used: number }>({ capacity: 50, used: 0 });
   const [categories, setCategories] = useState<string[]>(CATEGORIES);
   // Default to the single-kitchen showcase; the founder opens the marketplace later.
   const [appMode, setAppModeState] = useState<AppMode>('single');
@@ -327,6 +333,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
       const slots = await fetchApi.fetchSlots(showcase).catch(() => []);
       if (slots.length) setSlots(slots);
+      const stock = await fetchApi.fetchTodayStock(showcase).catch(() => null);
+      if (stock) setDailyStock(stock);
     }
     if (workshopsR.status === 'fulfilled' && workshopsR.value.length) {
       setWorkshops(workshopsR.value);
@@ -366,8 +374,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const itemCount = lines.reduce((sum, l) => sum + l.quantity, 0);
       const total = lines.reduce((sum, l) => sum + l.price * l.quantity, 0);
 
-      // Client-side gate. The server repeats this check authoritatively.
-      if (itemCount <= 0 || slot.used + itemCount > slot.capacity) return null;
+      // Client-side gate against the SHARED daily pool. The server repeats this
+      // check authoritatively inside place_order().
+      if (itemCount <= 0 || dailyStock.used + itemCount > dailyStock.capacity) return null;
 
       let placed: PlacedOrder;
 
@@ -405,12 +414,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSlots((current) =>
         current.map((s) => (s.digits === slotDigits ? { ...s, used: s.used + itemCount } : s)),
       );
+      setDailyStock((current) => ({ ...current, used: current.used + itemCount }));
       setCustomerOrders((current) => [order, ...current]);
       setKitchenOrders((current) => [order, ...current]);
 
       return placed;
     },
-    [kitchens, slots],
+    [kitchens, slots, dailyStock],
   );
 
   const advanceOrder = useCallback((ref: string) => {
@@ -437,6 +447,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         s.digits === digits ? { ...s, capacity: Math.max(s.used, capacity) } : s,
       ),
     );
+  }, []);
+
+  const setDailyCapacity = useCallback((units: number) => {
+    setDailyStock((current) => ({ ...current, capacity: Math.max(current.used, units) }));
+    if (isSupabaseConfigured) void fetchApi.setDailyCapacityRemote(SHOWCASE_KITCHEN_SLUG, units);
   }, []);
 
   const addSlot = useCallback((time: string) => {
@@ -626,6 +641,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       refresh,
       kitchens,
       slots,
+      dailyStock,
+      setDailyCapacity,
       customerOrders,
       kitchenOrders,
       bulkRequests,
@@ -665,6 +682,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       refresh,
       kitchens,
       slots,
+      dailyStock,
+      setDailyCapacity,
       customerOrders,
       kitchenOrders,
       bulkRequests,

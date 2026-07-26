@@ -789,3 +789,37 @@ export async function applyCouponToOrder(orderId: string, code: string): Promise
     return 0;
   }
 }
+
+/* ---------------------------------------------------------- daily stock -- */
+
+export type DailyStock = { capacity: number; used: number };
+
+/** Today's shared unit pool for a kitchen (same remaining on every slot). */
+export async function fetchTodayStock(kitchenSlug: string): Promise<DailyStock | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('today_stock', { p_kitchen_slug: kitchenSlug });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ? { capacity: row.capacity ?? 0, used: row.used ?? 0 } : null;
+  } catch (e) {
+    console.warn('[spice-route] today_stock failed', e);
+    return null;
+  }
+}
+
+/** Owner sets today's total units. */
+export async function setDailyCapacityRemote(kitchenSlug: string, capacity: number): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.rpc('set_daily_capacity', {
+      p_kitchen_slug: kitchenSlug,
+      p_capacity: capacity,
+    });
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.warn('[spice-route] set_daily_capacity failed', e);
+    return false;
+  }
+}

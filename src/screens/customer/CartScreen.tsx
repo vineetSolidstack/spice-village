@@ -18,7 +18,6 @@ import { useStore } from '../../data/store';
 import { useCart } from '../../state/cart';
 import { useAuth } from '../../state/auth';
 import { money } from '../../lib/format';
-import { canBook, remaining } from '../../lib/slotCode';
 import { paymentsEnabled, createRazorpayOrder, releaseUnpaidOrder, type RazorpayOrder } from '../../lib/pay';
 import { applyCouponToOrder, previewCoupon } from '../../data/fetch';
 import { PaymentScreen } from './PaymentScreen';
@@ -29,7 +28,7 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   const { t } = useLanguage();
   const type = useType();
   const insets = useSafeAreaInsets();
-  const { slots, placeOrder, getKitchen, business, backend } = useStore();
+  const { slots, placeOrder, getKitchen, business, backend, dailyStock } = useStore();
   const { user } = useAuth();
   const cart = useCart();
   const { showToast } = useToast();
@@ -47,6 +46,11 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
 
   const kitchen = cart.kitchenSlug ? getKitchen(cart.kitchenSlug) : undefined;
   const couponsAvailable = backend === 'supabase';
+  // Shared daily pool: the same remaining shows on every slot, and a slot is
+  // selectable only if the whole cart still fits in what's left today.
+  const poolRemaining = Math.max(0, dailyStock.capacity - dailyStock.used);
+  const poolLeft = poolRemaining >= cart.count ? poolRemaining : 0;
+  const soldOut = poolRemaining <= 0;
   const payable = Math.max(0, cart.total - couponDiscount);
 
   const onCheckCoupon = async () => {
@@ -197,16 +201,20 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
               <SlotChip
                 key={slot.digits}
                 slot={slot}
-                quantity={cart.count}
+                left={poolLeft}
                 selected={selected === slot.digits}
                 onPress={() => setSelected(slot.digits)}
               />
             ))}
           </View>
 
-          {!selected ? (
+          {soldOut ? (
+            <Text style={[type.body(12, 700), { color: colors.statusDanger }]}>
+              Sold out for today — check back tomorrow.
+            </Text>
+          ) : !selected ? (
             <Text style={[type.body(12, 600), styles.sectionHint]}>
-              Pick a slot to place your order — caps keep the kitchen calm.
+              {poolLeft} units left today — pick any pickup time.
             </Text>
           ) : null}
         </View>
@@ -325,22 +333,25 @@ function BillRow({ label, value, good }: { label: string; value: string; good?: 
   );
 }
 
+/**
+ * A pickup time. Capacity is a shared daily pool, so every chip shows the same
+ * remaining count and they all close together when the day sells out.
+ */
 function SlotChip({
   slot,
-  quantity,
+  left,
   selected,
   onPress,
 }: {
   slot: Slot;
-  quantity: number;
+  /** Units left in the shared daily pool (same for every slot). */
+  left: number;
   selected: boolean;
   onPress: () => void;
 }) {
   const type = useType();
-  const left = remaining(slot);
-  const full = !canBook(slot, quantity);
-
-  const detailColour = full ? colors.textFaint : left <= 3 ? colors.statusWarn : colors.textMuted;
+  const full = left <= 0;
+  const detailColour = full ? colors.textFaint : left <= 5 ? colors.statusWarn : colors.textMuted;
 
   return (
     <Pressable
@@ -365,7 +376,7 @@ function SlotChip({
         {slot.time}
       </Text>
       <Text style={[type.body(11, 600), { color: detailColour }]}>
-        {left === 0 ? 'Full' : full ? `Only ${left} left` : `${left} left`}
+        {full ? 'Sold out' : `${left} left today`}
       </Text>
     </Pressable>
   );

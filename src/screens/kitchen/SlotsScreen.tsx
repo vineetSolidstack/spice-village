@@ -1,10 +1,12 @@
 /**
- * Pickup slots — capacity management.
+ * Pickup slots + today's stock.
  *
- * The cap stepper's floor is the number already booked: lowering capacity below
- * `used` would strand orders the kitchen has already accepted.
+ * Capacity is a single shared pool for the day, not per slot: the owner sets
+ * how many units they'll cook today (e.g. 50), every slot draws from that one
+ * number, and when it hits zero every slot closes. The rows below are just the
+ * pickup TIMES customers can choose.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 
@@ -22,63 +24,112 @@ import {
 import { colors, layout, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useStore } from '../../data/store';
-import { remaining } from '../../lib/slotCode';
 import type { Slot } from '../../data/types';
 
-/** At or below this many covers left, the count turns turmeric. */
-const LOW_REMAINING = 2;
-
 export function KitchenSlotsScreen() {
-  const { slots, setSlotCapacity, addSlot } = useStore();
+  const type = useType();
+  const { slots, addSlot, dailyStock, setDailyCapacity } = useStore();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
   const [time, setTime] = useState('');
+
+  // Local draft of the day's number, so the stepper feels immediate.
+  const [capacity, setCapacity] = useState(dailyStock.capacity);
+  useEffect(() => setCapacity(dailyStock.capacity), [dailyStock.capacity]);
+
+  const left = Math.max(0, dailyStock.capacity - dailyStock.used);
+  const dirty = capacity !== dailyStock.capacity;
 
   const onAdd = () => {
     if (!time.trim()) return;
     addSlot(time.trim());
     setTime('');
     setAdding(false);
-    showToast('Slot added', 'info');
+    showToast('Pickup time added', 'info');
+  };
+
+  const onSaveCapacity = () => {
+    setDailyCapacity(capacity);
+    showToast(`Today’s stock set to ${capacity} units`, 'info');
   };
 
   return (
     <Screen bottomInset={16}>
-      <PortalHeader
-        title="Pickup slots"
-        right={
-          <Button
-            size="sm"
-            icon={<Plus size={16} color="#FFFFFF" strokeWidth={2} />}
-            onPress={() => setAdding(true)}
-          >
-            Add slot
-          </Button>
-        }
-      />
+      <PortalHeader title="Today’s stock" />
 
       <View style={styles.body}>
         <InfoBanner weight={600}>
-          Caps limit how many orders customers can book per slot — full slots close automatically at
-          checkout.
+          Set how many units you’ll cook today. Every pickup time shares this one
+          pool — when it runs out, all times close automatically.
         </InfoBanner>
 
+        {/* -------------------------------------------- the shared pool */}
+        <View style={[styles.poolCard, shadow.card]}>
+          <View style={styles.poolTop}>
+            <View>
+              <Text style={type.display(30, 800)}>{left}</Text>
+              <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
+                units left of {dailyStock.capacity}
+              </Text>
+            </View>
+            <View style={styles.poolStepper}>
+              <Text style={[type.body(12, 700), styles.poolLabel]}>Today’s total</Text>
+              <Stepper
+                value={capacity}
+                onChange={setCapacity}
+                min={dailyStock.used}
+                label="units"
+              />
+            </View>
+          </View>
+
+          {/* A simple progress bar of used vs capacity. */}
+          <View style={styles.bar}>
+            <View
+              style={[
+                styles.barFill,
+                { width: `${dailyStock.capacity ? (dailyStock.used / dailyStock.capacity) * 100 : 0}%` },
+              ]}
+            />
+          </View>
+          <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+            {dailyStock.used} booked so far today
+          </Text>
+
+          <Button block disabled={!dirty} onPress={onSaveCapacity}>
+            {dirty ? `Set to ${capacity} units` : 'Saved'}
+          </Button>
+        </View>
+
+        {/* -------------------------------------------- pickup times */}
+        <View style={styles.timesHead}>
+          <Text style={type.display(18, 700)}>Pickup times</Text>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<Plus size={16} color={colors.textBrand} strokeWidth={2} />}
+            onPress={() => setAdding(true)}
+          >
+            Add time
+          </Button>
+        </View>
+
         {slots.map((slot) => (
-          <SlotRow key={slot.digits} slot={slot} onCapacity={setSlotCapacity} />
+          <TimeRow key={slot.digits} slot={slot} left={left} />
         ))}
       </View>
 
       <Dialog
         open={adding}
         onClose={() => setAdding(false)}
-        title="Add pickup slot"
+        title="Add pickup time"
         footer={
           <>
             <Button variant="ghost" onPress={() => setAdding(false)}>
               Cancel
             </Button>
             <Button disabled={!time.trim()} onPress={onAdd}>
-              Add slot
+              Add
             </Button>
           </>
         }
@@ -95,43 +146,48 @@ export function KitchenSlotsScreen() {
   );
 }
 
-function SlotRow({
-  slot,
-  onCapacity,
-}: {
-  slot: Slot;
-  onCapacity: (digits: string, capacity: number) => void;
-}) {
+/** A pickup time. Remaining is the shared pool, identical across every row. */
+function TimeRow({ slot, left }: { slot: Slot; left: number }) {
   const type = useType();
-  const left = remaining(slot);
-
-  const countColour =
-    left === 0 ? colors.statusDanger : left <= LOW_REMAINING ? colors.statusWarn : colors.textMuted;
+  const countColour = left === 0 ? colors.statusDanger : left <= 5 ? colors.statusWarn : colors.textMuted;
 
   return (
     <View style={[styles.row, shadow.card]}>
       <SlotCodeChip code={slot.digits} size="md" />
-
       <View style={styles.rowBody}>
         <Text style={type.body(15, 700)}>{slot.time}</Text>
         <Text style={[type.body(12, 600), { color: countColour }]}>
-          {slot.used}/{slot.capacity} booked · {left === 0 ? 'Full' : `${left} left`}
+          {left === 0 ? 'Sold out' : `${left} units left`}
         </Text>
       </View>
-
-      <Stepper
-        value={slot.capacity}
-        onChange={(next) => onCapacity(slot.digits, next)}
-        // Capacity can never drop below what is already booked.
-        min={slot.used}
-        label="capacity"
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: layout.gutter, gap: 10 },
+  body: { paddingHorizontal: layout.gutter, gap: 12 },
+  poolCard: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: layout.cardPadding,
+    gap: 12,
+  },
+  poolTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  poolStepper: { alignItems: 'flex-end', gap: 6 },
+  poolLabel: { color: colors.textMuted },
+  bar: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.surfaceSunken,
+    overflow: 'hidden',
+  },
+  barFill: { height: 8, borderRadius: 4, backgroundColor: colors.actionPrimary },
+  timesHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
   row: {
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
