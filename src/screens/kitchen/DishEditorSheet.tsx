@@ -23,7 +23,11 @@ export type DishEditorSheetProps = {
   /** The dish being edited, a blank draft for "add", or null when closed. */
   draft: DishDraft | null;
   onClose: () => void;
-  onSave: (dish: Dish, isCombo: boolean) => void;
+  onSave: (
+    dish: Dish,
+    isCombo: boolean,
+    unitsChange?: { units: number | null; repeat: boolean } | null,
+  ) => void;
 };
 
 /** A fresh dish with the first library photo, ready for the "Add item" flow. */
@@ -51,6 +55,10 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   const [veg, setVeg] = useState(true);
   const [isCombo, setIsCombo] = useState(false);
   const [available, setAvailable] = useState(true);
+  // Units made per day. Empty = no limit (unlimited). See item_stock.sql.
+  const [units, setUnits] = useState('');
+  // When changing an existing item's units, ask whether it's everyday or today.
+  const [unitsPrompt, setUnitsPrompt] = useState(false);
   // Real uploaded photos win over the bundled library. Several can be added;
   // the customer app auto-swipes through them.
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
@@ -75,6 +83,8 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
       .map((m) => (m as { uri: string }).uri);
     setUploadedUrls(existing);
     setCategory(d.category ?? '');
+    setUnits(d.dailyUnits != null ? String(d.dailyUnits) : '');
+    setUnitsPrompt(false);
     setPhotoError(null);
   }, [draft]);
 
@@ -86,18 +96,21 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   // Old price is the struck-through walk-in price, so it must be ≥ the offer price.
   const valid = name.trim().length > 0 && priceNum > 0 && oldNum >= priceNum;
 
-  const onSubmit = () => {
-    if (!valid) return;
-    // A file:// URL means an upload hasn't finished (or failed). Saving it would
-    // show the photo only on this device, so block until it's hosted.
-    if (backend === 'supabase' && uploadedUrls.some((u) => !/^https?:\/\//.test(u))) {
-      setPhotoError('A photo is still uploading — wait a moment and try again.');
-      return;
-    }
-    // Uploaded photos form the gallery; if none, use the picked library image.
+  // Parsed units: '' means "no limit" (null); otherwise a non-negative number.
+  const unitsNum = units.trim() === '' ? null : parseInt(units, 10) || 0;
+  const origUnits = draft.dish.dailyUnits ?? null;
+  const unitsChanged = unitsNum !== origUnits;
+  // Only ask "every day vs just today" when an existing, already-limited item's
+  // number changes to another number — that's the only case where "just today"
+  // is meaningful. First-time set, clearing, and new items just set the default.
+  const needsSchedule = editing && unitsChanged && unitsNum != null && origUnits != null;
+
+  const commit = (repeat: boolean) => {
+    // Uploaded photos form the gallery; if none, a warm gradient placeholder.
     const gallery = uploadedUrls.length
       ? uploadedUrls.map((u) => photoFill(u))
       : [gradient('#E8A33D', '#C1440E')];
+    const unitsChange = unitsChanged ? { units: unitsNum, repeat } : undefined;
     onSave(
       {
         ...draft.dish,
@@ -108,12 +121,30 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
         oldPrice: oldNum,
         veg,
         available,
+        dailyUnits: unitsNum,
         image: gallery[0],
         gallery,
       },
       isCombo,
+      unitsChange,
     );
     onClose();
+  };
+
+  const onSubmit = () => {
+    if (!valid) return;
+    // A file:// URL means an upload hasn't finished (or failed). Saving it would
+    // show the photo only on this device, so block until it's hosted.
+    if (backend === 'supabase' && uploadedUrls.some((u) => !/^https?:\/\//.test(u))) {
+      setPhotoError('A photo is still uploading — wait a moment and try again.');
+      return;
+    }
+    // Changing a running item's number? Ask everyday vs just-today first.
+    if (needsSchedule) {
+      setUnitsPrompt(true);
+      return;
+    }
+    commit(true);
   };
 
   const runUpload = async (take: boolean) => {
@@ -142,14 +173,26 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
       onClose={onClose}
       title={editing ? 'Edit item' : 'Add item'}
       footer={
-        <>
-          <Button variant="ghost" onPress={onClose}>
-            Cancel
-          </Button>
-          <Button disabled={!valid || uploading} onPress={onSubmit}>
-            {uploading ? 'Uploading…' : editing ? 'Save item' : 'Add item'}
-          </Button>
-        </>
+        unitsPrompt ? (
+          <>
+            <Button variant="ghost" onPress={() => setUnitsPrompt(false)}>
+              Back
+            </Button>
+            <Button variant="secondary" onPress={() => commit(false)}>
+              Just today
+            </Button>
+            <Button onPress={() => commit(true)}>Every day</Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" onPress={onClose}>
+              Cancel
+            </Button>
+            <Button disabled={!valid || uploading} onPress={onSubmit}>
+              {uploading ? 'Uploading…' : editing ? 'Save item' : 'Add item'}
+            </Button>
+          </>
+        )
       }
     >
       <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -191,6 +234,28 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
           onChangeText={setCategory}
           style={styles.field}
         />
+
+        <Input
+          label="Units per day"
+          placeholder="e.g. 10 — blank for no limit"
+          hint="How many you make today. Every item's units add up to the day's total; each sells out on its own."
+          keyboardType="number-pad"
+          value={units}
+          onChangeText={(v) => setUnits(v.replace(/\D/g, ''))}
+          style={styles.field}
+        />
+
+        {unitsPrompt ? (
+          <View style={styles.schedulePrompt}>
+            <Text style={[type.body(13, 800), { color: colors.textBrand, marginBottom: 4 }]}>
+              Change {name.trim() || 'this item'} to {unitsNum} units…
+            </Text>
+            <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+              “Every day” makes {unitsNum} the new daily default. “Just today” keeps the old
+              default and only changes today.
+            </Text>
+          </View>
+        ) : null}
 
         <Text style={[type.body(13, 700), styles.label]}>Photos</Text>
         <Text style={[type.body(12, 600), styles.libraryHint]}>
@@ -277,6 +342,12 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   libraryHint: { color: colors.textMuted, marginBottom: 8 },
+  schedulePrompt: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSunken,
+  },
   toggles: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
   vegPreview: { marginLeft: 'auto' },
   switchRow: {

@@ -1,12 +1,12 @@
 /**
  * Pickup slots + today's stock.
  *
- * Capacity is a single shared pool for the day, not per slot: the owner sets
- * how many units they'll cook today (e.g. 50), every slot draws from that one
- * number, and when it hits zero every slot closes. The rows below are just the
- * pickup TIMES customers can choose.
+ * Units are set per item in the Menu now (see item_stock.sql). This screen
+ * shows the day's TOTAL — the sum of every item's units — and the pickup TIMES
+ * customers can choose. Every time shares the same running total; when the last
+ * item sells out the total hits zero and all times close.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 
@@ -18,7 +18,6 @@ import {
   PortalHeader,
   Screen,
   SlotCodeChip,
-  Stepper,
   useToast,
 } from '../../components';
 import { colors, layout, radius, shadow } from '../../theme';
@@ -28,17 +27,12 @@ import type { Slot } from '../../data/types';
 
 export function KitchenSlotsScreen() {
   const type = useType();
-  const { slots, addSlot, dailyStock, setDailyCapacity } = useStore();
+  const { slots, addSlot, dailyStock } = useStore();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
   const [time, setTime] = useState('');
 
-  // Local draft of the day's number, so the stepper feels immediate.
-  const [capacity, setCapacity] = useState(dailyStock.capacity);
-  useEffect(() => setCapacity(dailyStock.capacity), [dailyStock.capacity]);
-
   const left = Math.max(0, dailyStock.capacity - dailyStock.used);
-  const dirty = capacity !== dailyStock.capacity;
 
   const onAdd = () => {
     if (!time.trim()) return;
@@ -48,42 +42,28 @@ export function KitchenSlotsScreen() {
     showToast('Pickup time added', 'info');
   };
 
-  const onSaveCapacity = () => {
-    setDailyCapacity(capacity);
-    showToast(`Today’s stock set to ${capacity} units`, 'info');
-  };
-
   return (
     <Screen bottomInset={16}>
       <PortalHeader title="Today’s stock" />
 
       <View style={styles.body}>
         <InfoBanner weight={600}>
-          Set how many units you’ll cook today. Every pickup time shares this one
-          pool — when it runs out, all times close automatically.
+          Units are set on each item in the Menu. This is today’s total across
+          every item — when it runs out, all pickup times close automatically.
         </InfoBanner>
 
-        {/* -------------------------------------------- the shared pool */}
+        {/* -------------------------------------------- the day's total */}
         <View style={[styles.poolCard, shadow.card]}>
           <View style={styles.poolTop}>
             <View>
               <Text style={type.display(30, 800)}>{left}</Text>
               <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
-                units left of {dailyStock.capacity}
+                units left of {dailyStock.capacity} today
               </Text>
-            </View>
-            <View style={styles.poolStepper}>
-              <Text style={[type.body(12, 700), styles.poolLabel]}>Today’s total</Text>
-              <Stepper
-                value={capacity}
-                onChange={setCapacity}
-                min={dailyStock.used}
-                label="units"
-              />
             </View>
           </View>
 
-          {/* A simple progress bar of used vs capacity. */}
+          {/* A simple progress bar of used vs total. */}
           <View style={styles.bar}>
             <View
               style={[
@@ -93,12 +73,8 @@ export function KitchenSlotsScreen() {
             />
           </View>
           <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
-            {dailyStock.used} booked so far today
+            {dailyStock.used} booked so far today · set each item’s units in Menu
           </Text>
-
-          <Button block disabled={!dirty} onPress={onSaveCapacity}>
-            {dirty ? `Set to ${capacity} units` : 'Saved'}
-          </Button>
         </View>
 
         {/* -------------------------------------------- pickup times */}

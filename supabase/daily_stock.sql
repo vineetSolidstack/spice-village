@@ -2,6 +2,12 @@
 --
 -- RUN THIRTEENTH, after coupons.sql. Safe to re-run.
 --
+-- NOTE: item_stock.sql (RUN FIFTEENTH) SUPERSEDES this file. It moves capacity
+-- from one kitchen pool to a per-item number set on each menu item, and
+-- re-declares place_order/cancel_order/today_stock accordingly. This file is
+-- kept so the run order stays intact and re-runnable; its place_order is simply
+-- overwritten by the later one. Run both, in order.
+--
 -- The capacity model changes here. Instead of each pickup slot having its own
 -- cap, the kitchen sets ONE number of units for the day (e.g. 50). Every slot
 -- shows that same remaining count, and any order — at any slot, for any combo —

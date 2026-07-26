@@ -311,6 +311,7 @@ export function Storefront({
                   gallery={dish.gallery}
                   quantity={cart[dish.id] ?? 0}
                   available={dish.available !== false}
+                  remaining={dish.remainingToday}
                   favourite={favourites.isFavourite(dish.id)}
                   onToggleFavourite={() => favourites.toggle(dish.id)}
                   onAdd={() => onAdd(dish.id)}

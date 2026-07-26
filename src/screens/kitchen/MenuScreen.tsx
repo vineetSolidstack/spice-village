@@ -96,9 +96,9 @@ export function KitchenMenuScreen() {
       <DishEditorSheet
         draft={editing}
         onClose={() => setEditing(null)}
-        onSave={async (dish, isCombo) => {
+        onSave={async (dish, isCombo, unitsChange) => {
           const creating = !dish.id;
-          const ok = await saveDish(kitchen.slug, dish, isCombo);
+          const ok = await saveDish(kitchen.slug, dish, isCombo, unitsChange);
           showToast(
             ok
               ? creating

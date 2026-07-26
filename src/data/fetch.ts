@@ -56,6 +56,7 @@ type DishRow = {
   category: string | null;
   bulk_available: boolean | null;
   bulk_price: number | null;
+  daily_units: number | null;
 };
 
 function toDish(d: DishRow): Dish {
@@ -78,6 +79,9 @@ function toDish(d: DishRow): Dish {
     category: d.category ?? undefined,
     bulkAvailable: d.bulk_available !== false,
     bulkPrice: d.bulk_price ?? undefined,
+    dailyUnits: d.daily_units,
+    // remainingToday is filled in from menu_stock after the catalogue loads.
+    remainingToday: d.daily_units == null ? null : d.daily_units,
   };
 }
 
@@ -88,7 +92,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
     .from('kitchens')
     .select(
       'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, bulk_enabled, bulk_min_units, bulk_note,' +
-        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price )',
+        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units )',
     )
     .eq('state', 'approved')
     .order('featured', { ascending: false });
@@ -820,6 +824,49 @@ export async function setDailyCapacityRemote(kitchenSlug: string, capacity: numb
     return true;
   } catch (e) {
     console.warn('[spice-route] set_daily_capacity failed', e);
+    return false;
+  }
+}
+
+/** Per-item remaining units for today, keyed by dish id. */
+export async function fetchMenuStock(
+  kitchenSlug: string,
+): Promise<Record<string, { units: number | null; used: number; remaining: number | null }>> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('menu_stock', { p_kitchen_slug: kitchenSlug });
+    if (error) throw error;
+    const out: Record<string, { units: number | null; used: number; remaining: number | null }> = {};
+    for (const row of (data ?? []) as { dish_id: string; units: number | null; used: number; remaining: number | null }[]) {
+      out[row.dish_id] = { units: row.units, used: row.used ?? 0, remaining: row.remaining };
+    }
+    return out;
+  } catch (e) {
+    console.warn('[spice-route] menu_stock failed', e);
+    return {};
+  }
+}
+
+/**
+ * Set an item's daily units. repeat=true changes the everyday default; false
+ * overrides today only. Pass null units to clear the limit (unlimited).
+ */
+export async function setDishDailyUnitsRemote(
+  dishId: string,
+  units: number | null,
+  repeat: boolean,
+): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.rpc('set_dish_daily_units', {
+      p_dish_id: dishId,
+      p_units: units,
+      p_repeat: repeat,
+    });
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.warn('[spice-route] set_dish_daily_units failed', e);
     return false;
   }
 }

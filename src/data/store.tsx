@@ -153,7 +153,14 @@ type StoreValue = {
   removeDish: (kitchenSlug: string, dishId: string) => void;
   /** Create a dish (blank id) or replace an existing one. Returns false if
    *  the server write failed (customers won't see the change). */
-  saveDish: (kitchenSlug: string, dish: Dish, isCombo: boolean) => Promise<boolean>;
+  saveDish: (
+    kitchenSlug: string,
+    dish: Dish,
+    isCombo: boolean,
+    /** How to apply the units field: change the everyday default, override today
+     * only, clear the limit, or leave units untouched. */
+    unitsChange?: { units: number | null; repeat: boolean } | null,
+  ) => Promise<boolean>;
 
   submitBulkRequest: (input: Omit<BulkRequest, 'id' | 'status'>) => void;
   answerBulkRequest: (id: string, status: BulkStatus) => void;
@@ -318,12 +325,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const [kitchensR, workshopsR, ordersR, bulkR, settingsR] = results;
 
     if (kitchensR.status === 'fulfilled' && kitchensR.value.length) {
-      setKitchens(kitchensR.value);
+      let catalogue = kitchensR.value;
       const showcase =
         (settingsR.status === 'fulfilled' && settingsR.value?.showcaseSlug) ||
-        kitchensR.value[0].slug;
+        catalogue[0].slug;
+
+      // Merge today's per-item remaining units into the showcase kitchen's menu,
+      // so each combo can show "N left" and sell out on its own.
+      const menuStock = await fetchApi
+        .fetchMenuStock(showcase)
+        .catch((): Awaited<ReturnType<typeof fetchApi.fetchMenuStock>> => ({}));
+      if (Object.keys(menuStock).length) {
+        const withStock = (d: (typeof catalogue)[number]['menu'][number]) =>
+          menuStock[d.id] ? { ...d, remainingToday: menuStock[d.id].remaining } : d;
+        catalogue = catalogue.map((k) =>
+          k.slug !== showcase
+            ? k
+            : { ...k, combos: k.combos.map(withStock), menu: k.menu.map(withStock) },
+        );
+      }
+      setKitchens(catalogue);
+
       // Keep the business card in step with the kitchen the app showcases.
-      const shown = kitchensR.value.find((k) => k.slug === showcase);
+      const shown = catalogue.find((k) => k.slug === showcase);
       if (shown) {
         setBusiness((current) => ({
           ...current,
@@ -416,6 +440,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         current.map((s) => (s.digits === slotDigits ? { ...s, used: s.used + itemCount } : s)),
       );
       setDailyStock((current) => ({ ...current, used: current.used + itemCount }));
+      // Draw each ordered item down from its own remaining, so a combo can show
+      // sold-out immediately without waiting for the next refresh.
+      const orderedQty = new Map(lines.map((l) => [l.dishId, l.quantity]));
+      const drawDown = (d: Dish): Dish => {
+        const q = orderedQty.get(d.id);
+        return q != null && d.remainingToday != null
+          ? { ...d, remainingToday: Math.max(0, d.remainingToday - q) }
+          : d;
+      };
+      setKitchens((current) =>
+        current.map((k) =>
+          k.slug !== kitchenSlug
+            ? k
+            : { ...k, combos: k.combos.map(drawDown), menu: k.menu.map(drawDown) },
+        ),
+      );
       setCustomerOrders((current) => [order, ...current]);
       setKitchenOrders((current) => [order, ...current]);
 
@@ -494,7 +534,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const saveDish = useCallback<StoreValue['saveDish']>(
-    async (kitchenSlug, dish, isCombo) => {
+    async (kitchenSlug, dish, isCombo, unitsChange) => {
       // A blank id means "create"; allocate a temp one so the optimistic row has a key.
       const withId: Dish = dish.id ? dish : { ...dish, id: `d${Date.now()}` };
 
@@ -537,6 +577,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         },
         isCombo,
       );
+
+      // Apply the units change against the real row id (a new dish only has one
+      // after the insert above). "everyday" vs "today only" is the repeat flag.
+      if (id && unitsChange) {
+        await fetchApi.setDishDailyUnitsRemote(id, unitsChange.units, unitsChange.repeat);
+      }
 
       // Reconcile with the database either way: on success the real row (and its
       // server id) replaces the optimistic one; on failure the optimistic change

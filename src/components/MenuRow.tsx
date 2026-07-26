@@ -36,6 +36,8 @@ export type MenuRowProps = {
   /** Quantity already in the cart; drives the badge on the add button. */
   quantity?: number;
   available?: boolean;
+  /** Units left for today; null = no limit. 0 shows "Sold out". */
+  remaining?: number | null;
   /** Heart state + toggle; omit to hide the heart. */
   favourite?: boolean;
   onToggleFavourite?: () => void;
@@ -55,21 +57,25 @@ export function MenuRow({
   gallery,
   quantity = 0,
   available = true,
+  remaining,
   favourite,
   onToggleFavourite,
   onAdd,
   onPress,
 }: MenuRowProps) {
   const type = useType();
+  // A tracked item at zero is sold out for today; treat it like unavailable.
+  const soldOut = remaining === 0;
+  const canOrder = available && !soldOut;
   const inCart = quantity > 0;
 
   return (
     <Pressable
       onPress={onPress}
-      disabled={!available}
+      disabled={!canOrder}
       style={({ pressed }) => [
         styles.row,
-        !available ? styles.dimmed : null,
+        !canOrder ? styles.dimmed : null,
         pressed && onPress ? { opacity: 0.7 } : null,
       ]}
     >
@@ -103,6 +109,10 @@ export function MenuRow({
 
         {!available ? (
           <Text style={[type.body(12, 700), styles.soldOut]}>Not available today</Text>
+        ) : soldOut ? (
+          <Text style={[type.body(12, 700), styles.soldOut]}>Sold out for today</Text>
+        ) : remaining != null && remaining <= 10 ? (
+          <Text style={[type.body(12, 700), styles.fewLeft]}>Only {remaining} left today</Text>
         ) : null}
       </View>
 
@@ -128,7 +138,7 @@ export function MenuRow({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={inCart ? `${name}, ${quantity} in cart` : `Add ${name}`}
-          disabled={!available}
+          disabled={!canOrder}
           onPress={onAdd}
           style={({ pressed }) => [
             styles.add,
@@ -237,6 +247,7 @@ const styles = StyleSheet.create({
   saveText: { color: colors.statusSuccess },
   description: { color: colors.textMuted, lineHeight: 18 },
   soldOut: { color: colors.statusDanger, marginTop: 2 },
+  fewLeft: { color: colors.statusWarn, marginTop: 2 },
   thumbWrap: { width: THUMB, height: THUMB },
   thumb: { width: THUMB, height: THUMB, borderRadius: radius.md },
   heart: {

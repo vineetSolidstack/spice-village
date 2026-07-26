@@ -24,6 +24,10 @@ export type Dish = {
   bulkAvailable?: boolean;
   /** Per-unit bulk price; undefined means "quoted by hand". */
   bulkPrice?: number;
+  /** Units made per day (the repeating default). null/undefined = no limit. */
+  dailyUnits?: number | null;
+  /** Units still available for today; null when the item isn't limited. */
+  remainingToday?: number | null;
 };
 
 export type Kitchen = {
