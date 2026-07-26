@@ -33,13 +33,30 @@ export function KitchenSettingsScreen() {
   const [name, setName] = useState(business.kitchenName);
   const [cuisine, setCuisine] = useState(business.cuisine);
   const [pickupWindow, setPickupWindow] = useState(business.pickupWindow);
+  const [cutoff, setCutoff] = useState(business.orderCutoff);
   const [showCoupons, setShowCoupons] = useState(false);
 
   useEffect(() => {
     setName(business.kitchenName);
     setCuisine(business.cuisine);
     setPickupWindow(business.pickupWindow);
+    setCutoff(business.orderCutoff);
   }, [business]);
+
+  // Accept "7pm" / "19:00" / "7:30 pm" and normalise to 24h "HH:MM".
+  const normaliseCutoff = (raw: string): string => {
+    const s = raw.trim().toLowerCase();
+    if (!s) return '';
+    const m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/.exec(s);
+    if (!m) return business.orderCutoff; // keep the old value if unparseable
+    let hh = Number(m[1]);
+    const mm = m[2] ? Number(m[2]) : 0;
+    const ap = m[3];
+    if (ap === 'pm' && hh < 12) hh += 12;
+    if (ap === 'am' && hh === 12) hh = 0;
+    if (hh > 23 || mm > 59) return business.orderCutoff;
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  };
 
   const onSave = () => {
     if (!name.trim()) return;
@@ -47,6 +64,7 @@ export function KitchenSettingsScreen() {
       kitchenName: name.trim(),
       cuisine,
       pickupWindow: pickupWindow.trim(),
+      orderCutoff: normaliseCutoff(cutoff),
     });
     showToast('Kitchen profile saved', 'info');
   };
@@ -77,6 +95,14 @@ export function KitchenSettingsScreen() {
           hint="Shown on every order"
         />
 
+        <Input
+          label="Pre-order cutoff"
+          value={cutoff}
+          onChangeText={setCutoff}
+          placeholder="7pm"
+          hint="After this time today’s pre-orders close and reopen tomorrow. Leave blank for no cutoff."
+        />
+
         <Button disabled={!name.trim()} onPress={onSave}>Save changes</Button>
 
         <View style={styles.divider} />
@@ -89,15 +115,10 @@ export function KitchenSettingsScreen() {
           Discount codes
         </Button>
 
-        {/*
-          Be precise here rather than flattering: with credentials set, orders
-          and bookings are written to Supabase, but every screen still *reads*
-          the bundled demo data until the fetch layer lands.
-        */}
         <Text style={[type.body(12, 600), styles.backendNote]}>
           {backend === 'supabase'
-            ? 'Supabase: writes only — screens still read bundled demo data'
-            : 'Data source: local demo data'}
+            ? 'Live: reading and writing your Supabase data'
+            : 'Preview: local demo data (connect Supabase to go live)'}
         </Text>
 
         <Button variant="secondary" block onPress={() => setRole('customer')}>

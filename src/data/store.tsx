@@ -89,6 +89,9 @@ export type Business = {
   legalAddress: string;
   /** Support email for the About screen. */
   supportEmail: string;
+  /** Daily pre-order cutoff, 24h "HH:MM" (e.g. "19:00"). After it, today's
+   * ordering closes and the app opens again tomorrow. Empty = no cutoff. */
+  orderCutoff: string;
 };
 
 const BUSINESS_KEY = 'spiceroute.business';
@@ -189,20 +192,27 @@ const StoreContext = createContext<StoreValue | null>(null);
 let refCounter = 7200;
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [kitchens, setKitchens] = useState<Kitchen[]>(KITCHENS);
-  const [slots, setSlots] = useState<Slot[]>(SLOTS);
-  const [customerOrders, setCustomerOrders] = useState<Order[]>(CUSTOMER_ORDERS);
-  const [kitchenOrders, setKitchenOrders] = useState<Order[]>(ORDERS);
-  const [bulkRequests, setBulkRequests] = useState<BulkRequest[]>(BULK_REQUESTS);
-  const [workshops, setWorkshops] = useState<Workshop[]>(WORKSHOPS);
-  const [bookings, setBookings] = useState<WorkshopBooking[]>(WORKSHOP_BOOKINGS);
-  const [approvals, setApprovals] = useState<Approval[]>(APPROVALS);
-  const [managedKitchens, setManagedKitchens] = useState<ManagedKitchen[]>(MANAGED_KITCHENS);
-  const [users] = useState<PlatformUser[]>(PLATFORM_USERS);
+  // Production: when a real backend is connected we start EMPTY and show only
+  // what the owner has entered — no invented demo menu, orders, or classes.
+  // Without a backend (design preview) the bundled demo data fills the screens.
+  const seed = <T,>(demo: T, empty: T): T => (isSupabaseConfigured ? empty : demo);
+
+  const [kitchens, setKitchens] = useState<Kitchen[]>(seed(KITCHENS, []));
+  const [slots, setSlots] = useState<Slot[]>(seed(SLOTS, []));
+  const [customerOrders, setCustomerOrders] = useState<Order[]>(seed(CUSTOMER_ORDERS, []));
+  const [kitchenOrders, setKitchenOrders] = useState<Order[]>(seed(ORDERS, []));
+  const [bulkRequests, setBulkRequests] = useState<BulkRequest[]>(seed(BULK_REQUESTS, []));
+  const [workshops, setWorkshops] = useState<Workshop[]>(seed(WORKSHOPS, []));
+  const [bookings, setBookings] = useState<WorkshopBooking[]>(seed(WORKSHOP_BOOKINGS, []));
+  const [approvals, setApprovals] = useState<Approval[]>(seed(APPROVALS, []));
+  const [managedKitchens, setManagedKitchens] = useState<ManagedKitchen[]>(seed(MANAGED_KITCHENS, []));
+  const [users] = useState<PlatformUser[]>(seed(PLATFORM_USERS, []));
   const [acceptingOrders, setAcceptingOrders] = useState(true);
-  // Shared daily pool. Demo starts with 50 units, none used.
-  const [dailyStock, setDailyStock] = useState<{ capacity: number; used: number }>({ capacity: 50, used: 0 });
-  const [categories, setCategories] = useState<string[]>(CATEGORIES);
+  // Today's total units (sum across items). Empty until the owner sets item units.
+  const [dailyStock, setDailyStock] = useState<{ capacity: number; used: number }>(
+    seed({ capacity: 50, used: 0 }, { capacity: 0, used: 0 }),
+  );
+  const [categories, setCategories] = useState<string[]>(seed(CATEGORIES, []));
   // Default to the single-kitchen showcase; the founder opens the marketplace later.
   const [appMode, setAppModeState] = useState<AppMode>('single');
 
@@ -237,6 +247,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     legalAddress:
       'No. 606/1, Palaniyappa Nagar, Rakkiyapalayam Road, Ammapalayam, Avinashi block, Tirupur, Tamil Nadu 641652',
     supportEmail: 'vineetkrsnaprashad@gmail.com',
+    orderCutoff: '19:00',
   });
 
   useEffect(() => {
@@ -273,6 +284,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           fssai_number: next.fssai,
           legal_address: next.legalAddress,
           support_email: next.supportEmail,
+          order_cutoff: next.orderCutoff ? next.orderCutoff : null,
         });
       }
 
@@ -354,6 +366,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           kitchenName: shown.name,
           cuisine: shown.cuisine,
           area: shown.distance,
+          ...(shown.orderCutoff ? { orderCutoff: shown.orderCutoff } : {}),
         }));
       }
       const slots = await fetchApi.fetchSlots(showcase).catch(() => []);

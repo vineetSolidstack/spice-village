@@ -31,8 +31,10 @@ import { colors, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
 import { useFavourites } from '../../state/favourites';
+import { useAuth } from '../../state/auth';
 import { useStore } from '../../data/store';
 import { money } from '../../lib/format';
+import { useServiceWindow, formatCountdown } from '../../lib/serviceWindow';
 import type { Dish, Kitchen } from '../../data/types';
 
 const HERO_HEIGHT = 248;
@@ -71,7 +73,25 @@ export function Storefront({
   const type = useType();
   const insets = useSafeAreaInsets();
   const favourites = useFavourites();
-  const { loading, refresh } = useStore();
+  const { user } = useAuth();
+  const { loading, refresh, business, dailyStock } = useStore();
+
+  // Daily service window: open → last call → closed → opens tomorrow.
+  const unitsLeft = Math.max(0, dailyStock.capacity - dailyStock.used);
+  const { phase, lastCallLeftMs } = useServiceWindow(
+    business.orderCutoff || undefined,
+    unitsLeft,
+    user?.id ?? 'guest',
+  );
+  const orderingClosed = phase === 'closed';
+  // While closed, adds are ignored so a stale tap can't slip an order through.
+  const guardedAdd = useCallback(
+    (dishId: string) => {
+      if (orderingClosed) return;
+      onAdd(dishId);
+    },
+    [orderingClosed, onAdd],
+  );
 
   const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Record<string, number>>({});
@@ -233,6 +253,32 @@ export function Storefront({
               </Pressable>
             ) : null}
 
+            {phase === 'lastcall' ? (
+              <View style={[styles.window, styles.windowLastCall]}>
+                <Text style={[type.body(14, 800), { color: palette.cream100 }]}>
+                  ⏳ Last call · {formatCountdown(lastCallLeftMs)} left
+                </Text>
+                <Text style={[type.body(12, 600), { color: palette.cream100, opacity: 0.95 }]}>
+                  We’re closing for today — grab a 2-pack now before it’s gone.
+                </Text>
+              </View>
+            ) : orderingClosed ? (
+              <View style={[styles.window, styles.windowClosed]}>
+                <Text style={[type.body(14, 800), { color: colors.textBody }]}>
+                  Pre-orders are closed for today
+                </Text>
+                <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+                  We’re all done for today — open again tomorrow. See you then!
+                </Text>
+              </View>
+            ) : business.orderCutoff ? (
+              <View style={[styles.window, styles.windowOpen]}>
+                <Text style={[type.body(12, 700), { color: colors.textBrand }]}>
+                  Pre-order for today until {business.orderCutoff}
+                </Text>
+              </View>
+            ) : null}
+
             {popular.length ? (
               <View style={styles.popular}>
                 <Text style={[type.display(20, 700), styles.popularTitle]}>Popular</Text>
@@ -250,7 +296,7 @@ export function Storefront({
                       gallery={dish.gallery}
                       badge={i === 0 ? 'Most loved' : undefined}
                       quantity={cart[dish.id] ?? 0}
-                      onAdd={() => onAdd(dish.id)}
+                      onAdd={() => guardedAdd(dish.id)}
                     />
                   ))}
                 </ScrollView>
@@ -310,11 +356,11 @@ export function Storefront({
                   image={dish.image}
                   gallery={dish.gallery}
                   quantity={cart[dish.id] ?? 0}
-                  available={dish.available !== false}
+                  available={dish.available !== false && !orderingClosed}
                   remaining={dish.remainingToday}
                   favourite={favourites.isFavourite(dish.id)}
                   onToggleFavourite={() => favourites.toggle(dish.id)}
-                  onAdd={() => onAdd(dish.id)}
+                  onAdd={() => guardedAdd(dish.id)}
                 />
               ))}
             </View>
@@ -322,7 +368,7 @@ export function Storefront({
         </View>
       </ScrollView>
 
-      {cartCount > 0 ? (
+      {cartCount > 0 && !orderingClosed ? (
         <View style={[styles.sticky, { paddingBottom: insets.bottom ? 0 : 8 }]}>
           <Button block onPress={onOpenCart}>
             {`${t.viewCart} · ${cartCount}`}
@@ -409,6 +455,10 @@ const styles = StyleSheet.create({
   menu: { paddingHorizontal: layout.gutter },
   sectionTitle: { marginTop: 24, marginBottom: 4 },
   empty: { color: colors.textMuted, textAlign: 'center', paddingVertical: 40 },
+  window: { borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16, gap: 3 },
+  windowLastCall: { backgroundColor: colors.actionPrimary },
+  windowClosed: { backgroundColor: colors.surfaceSunken },
+  windowOpen: { backgroundColor: colors.statusSuccessBg, paddingVertical: 8 },
   sticky: {
     position: 'absolute',
     left: layout.gutter,

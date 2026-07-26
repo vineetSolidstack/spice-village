@@ -91,7 +91,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
   const { data, error } = await db
     .from('kitchens')
     .select(
-      'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, bulk_enabled, bulk_min_units, bulk_note,' +
+      'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, order_cutoff, bulk_enabled, bulk_min_units, bulk_note,' +
         ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units )',
     )
     .eq('state', 'approved')
@@ -102,6 +102,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
   type KitchenRow = {
     slug: string; name: string; cuisine: string; area: string;
     rating: number | string; featured: boolean; hero_image_path: string | null;
+    order_cutoff: string | null;
     bulk_enabled: boolean | null; bulk_min_units: number | null; bulk_note: string | null;
     dishes: DishRow[] | null;
   };
@@ -118,6 +119,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
       rating: Number(k.rating ?? 0),
       featured: Boolean(k.featured),
       image: resolveImage(k.hero_image_path, k.slug),
+      orderCutoff: k.order_cutoff ? k.order_cutoff.slice(0, 5) : null,
       combos: dishes.filter((d) => d.is_combo).map(toDish),
       menu: dishes.filter((d) => !d.is_combo).map(toDish),
       bulkEnabled: k.bulk_enabled !== false,
@@ -351,6 +353,7 @@ export async function saveKitchenDetails(
   patch: {
     name?: string; cuisine?: string; area?: string; pickup_window?: string;
     fssai_number?: string; legal_address?: string; support_email?: string;
+    order_cutoff?: string | null;
   },
 ): Promise<boolean> {
   try {

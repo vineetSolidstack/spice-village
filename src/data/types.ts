@@ -42,6 +42,8 @@ export type Kitchen = {
   /** Combos are listed before meals — a deliberate product decision. */
   combos: Dish[];
   menu: Dish[];
+  /** Daily pre-order cutoff "HH:MM" (24h); after it, today closes. */
+  orderCutoff?: string | null;
   /** When false the bulk-quote feature is hidden from customers entirely. */
   bulkEnabled?: boolean;
   bulkMinUnits?: number;
