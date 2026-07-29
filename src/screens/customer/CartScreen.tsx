@@ -18,6 +18,7 @@ import { useStore } from '../../data/store';
 import { useCart } from '../../state/cart';
 import { useAuth } from '../../state/auth';
 import { money } from '../../lib/format';
+import { useServiceWindow, LAST_CALL_MIN_ITEMS } from '../../lib/serviceWindow';
 import { paymentsEnabled, createRazorpayOrder, releaseUnpaidOrder, type RazorpayOrder } from '../../lib/pay';
 import { applyCouponToOrder, previewCoupon } from '../../data/fetch';
 import { PaymentScreen } from './PaymentScreen';
@@ -53,6 +54,15 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   const soldOut = poolRemaining <= 0;
   const payable = Math.max(0, cart.total - couponDiscount);
 
+  // During the last-call window, checkout is a "grab a 2-pack" — require 2+.
+  const { phase: servicePhase } = useServiceWindow(
+    business.orderCutoff || undefined,
+    poolRemaining,
+    user?.id ?? 'guest',
+  );
+  const lastCall = servicePhase === 'lastcall';
+  const belowLastCallMin = lastCall && cart.count < LAST_CALL_MIN_ITEMS;
+
   const onCheckCoupon = async () => {
     if (!coupon.trim() || !cart.kitchenSlug || checkingCoupon) return;
     setCheckingCoupon(true);
@@ -70,6 +80,13 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
 
   const onPlace = async () => {
     if (!selected || !cart.kitchenSlug || placing) return;
+    if (belowLastCallMin) {
+      showToast(
+        `Last call is a ${LAST_CALL_MIN_ITEMS}-pack — add one more before we close for today.`,
+        'danger',
+      );
+      return;
+    }
     setPlacing(true);
 
     // Reserve the slot first (creates the order; unpaid when payments are on).
@@ -278,12 +295,23 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
 
       {/* ------------------------------------------------------ checkout */}
       <View style={[styles.footer, { paddingBottom: 16 + (insets.bottom ? 0 : 4) }]}>
-        <Button block disabled={!selected || placing} onPress={() => void onPlace()}>
+        {lastCall ? (
+          <Text style={[type.body(12, 700), { color: colors.textBrand, marginBottom: 8, textAlign: 'center' }]}>
+            ⏳ Last call — grab a {LAST_CALL_MIN_ITEMS}-pack before we close for today.
+          </Text>
+        ) : null}
+        <Button
+          block
+          disabled={!selected || placing || belowLastCallMin}
+          onPress={() => void onPlace()}
+        >
           {placing
             ? 'Please wait…'
-            : paymentsEnabled
-              ? `Pay ${money(payable)} · UPI`
-              : `${t.placeOrder} · ${money(payable)}`}
+            : belowLastCallMin
+              ? `Add ${LAST_CALL_MIN_ITEMS - cart.count} more for last call`
+              : paymentsEnabled
+                ? `Pay ${money(payable)} · UPI`
+                : `${t.placeOrder} · ${money(payable)}`}
         </Button>
       </View>
 

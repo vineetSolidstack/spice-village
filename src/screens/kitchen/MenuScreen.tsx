@@ -3,8 +3,8 @@
  * the add/edit item editor with a photo picker.
  */
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronDown, ChevronUp, Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react-native';
 
 import {
   Button,
@@ -25,7 +25,7 @@ import type { Dish } from '../../data/types';
 
 export function KitchenMenuScreen() {
   const type = useType();
-  const { getKitchen, showcaseSlug, setDishAvailability, setDishHidden, removeDish, saveDish, loading } =
+  const { getKitchen, showcaseSlug, setDishAvailability, setDishHidden, moveDish, removeDish, saveDish, loading } =
     useStore();
   const { showToast } = useToast();
   const [confirming, setConfirming] = useState<Dish | null>(null);
@@ -70,7 +70,12 @@ export function KitchenMenuScreen() {
           </View>
         ) : null}
 
-        {items.map(({ dish, isCombo }) => (
+        {items.map(({ dish, isCombo }) => {
+          const group = isCombo ? kitchen?.combos ?? [] : kitchen?.menu ?? [];
+          const gi = group.findIndex((d) => d.id === dish.id);
+          const canUp = gi > 0;
+          const canDown = gi >= 0 && gi < group.length - 1;
+          return (
           <View
             key={dish.id}
             style={[
@@ -79,6 +84,25 @@ export function KitchenMenuScreen() {
               dish.available === false || dish.hidden ? styles.dimmed : null,
             ]}
           >
+            <View style={styles.reorder}>
+              <Pressable
+                disabled={!canUp}
+                onPress={() => moveDish(saveSlug, dish.id, isCombo, 'up')}
+                hitSlop={6}
+                accessibilityLabel={`Move ${dish.name} up`}
+              >
+                <ChevronUp size={16} color={canUp ? colors.textMuted : colors.borderSubtle} strokeWidth={2.5} />
+              </Pressable>
+              <Pressable
+                disabled={!canDown}
+                onPress={() => moveDish(saveSlug, dish.id, isCombo, 'down')}
+                hitSlop={6}
+                accessibilityLabel={`Move ${dish.name} down`}
+              >
+                <ChevronDown size={16} color={canDown ? colors.textMuted : colors.borderSubtle} strokeWidth={2.5} />
+              </Pressable>
+            </View>
+
             <Media fill={dish.image} style={styles.thumb} />
 
             <View style={styles.rowBody}>
@@ -91,6 +115,16 @@ export function KitchenMenuScreen() {
                 </Text>
                 <Text style={[type.body(13, 600), styles.oldPrice]}>{money(dish.oldPrice)}</Text>
               </View>
+              {dish.dailyUnits != null && !dish.hidden ? (
+                <Text
+                  style={[
+                    type.body(11, 700),
+                    { color: (dish.remainingToday ?? 0) <= 3 ? colors.statusWarn : colors.textMuted },
+                  ]}
+                >
+                  {dish.remainingToday ?? dish.dailyUnits} / {dish.dailyUnits} left today
+                </Text>
+              ) : null}
               {dish.hidden ? (
                 <Text style={[type.body(11, 700), { color: colors.statusDanger }]}>
                   Taken out · hidden from customers
@@ -130,7 +164,8 @@ export function KitchenMenuScreen() {
               <Trash2 size={16} color={colors.statusDanger} strokeWidth={2} />
             </IconButton>
           </View>
-        ))}
+          );
+        })}
       </View>
 
       <DishEditorSheet
@@ -194,6 +229,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dimmed: { opacity: 0.55 },
+  reorder: { justifyContent: 'center', alignItems: 'center', marginLeft: -4 },
   empty: { paddingVertical: 48, paddingHorizontal: 24, alignItems: 'center' },
   thumb: { width: 44, height: 44, borderRadius: 12 },
   rowBody: { flex: 1, minWidth: 0 },

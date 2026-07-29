@@ -8,7 +8,6 @@ import { StyleSheet, View } from 'react-native';
 import { Badge, PortalHeader, Screen, SectionLabel, StatCard } from '../../components';
 import { colors, layout } from '../../theme';
 import { useStore } from '../../data/store';
-import { TODAYS_SALES } from '../../data/demo';
 import { money } from '../../lib/format';
 import { OrderRow } from './OrderRow';
 import { VerifyQrSheet } from './VerifyQrSheet';
@@ -18,12 +17,19 @@ import type { Order } from '../../data/types';
 const ATTENTION_LIMIT = 2;
 
 export function KitchenDashboardScreen() {
-  const { kitchenOrders, acceptingOrders, advanceOrder, verifySlotCode, business } = useStore();
+  const { kitchenOrders, acceptingOrders, advanceOrder, verifySlotCode, business, dailyStock, slots } =
+    useStore();
   const [verifying, setVerifying] = useState<Order | null>(null);
 
   const open = kitchenOrders.filter((o) => o.status !== 'Completed');
   const newCount = kitchenOrders.filter((o) => o.status === 'New').length;
   const preparingCount = kitchenOrders.filter((o) => o.status === 'Preparing').length;
+
+  // Today at a glance: live counts from real orders + remaining units.
+  const liveOrders = kitchenOrders.filter((o) => o.status !== 'Completed');
+  const sales = kitchenOrders.reduce((sum, o) => sum + o.total, 0);
+  const unitsLeft = Math.max(0, dailyStock.capacity - dailyStock.used);
+  const nextPickup = slots.find((s) => s.used < s.capacity)?.time ?? slots[0]?.time ?? '—';
 
   return (
     <Screen bottomInset={16}>
@@ -40,7 +46,14 @@ export function KitchenDashboardScreen() {
         <View style={styles.stats}>
           <StatCard label="New orders" value={newCount} tone={colors.statusInfo} />
           <StatCard label="Preparing" value={preparingCount} tone={colors.statusWarn} />
-          <StatCard label="Today's sales" value={money(TODAYS_SALES)} />
+          <StatCard label="Today's sales" value={money(sales)} />
+        </View>
+
+        <SectionLabel style={styles.sectionLabel}>Today at a glance</SectionLabel>
+        <View style={styles.stats}>
+          <StatCard label="Live orders" value={liveOrders.length} />
+          <StatCard label="Units left" value={unitsLeft} tone={unitsLeft <= 5 ? colors.statusWarn : undefined} />
+          <StatCard label="Next pickup" value={nextPickup} />
         </View>
 
         <SectionLabel style={styles.sectionLabel}>Needs attention</SectionLabel>

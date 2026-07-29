@@ -16,6 +16,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type ServicePhase = 'open' | 'lastcall' | 'closed';
 
 const LAST_CALL_MS = 10 * 60 * 1000;
+// The last-call window can only OPEN within this long after the cutoff, so it
+// stays aligned with the server's ordering grace (see supabase/tweaks.sql).
+const LAST_CALL_OPEN_WITHIN_MS = 30 * 60 * 1000;
+/** Minimum items to check out during the last-call "grab a 2-pack" window. */
+export const LAST_CALL_MIN_ITEMS = 2;
 
 function todayKey(): string {
   const d = new Date();
@@ -76,11 +81,15 @@ export function useServiceWindow(
     AsyncStorage.getItem(storageKey).then((saved) => {
       if (cancelled) return;
       if (saved) {
+        // An already-started window keeps running (up to its 10 minutes).
         setWindowStart(Number(saved));
-      } else {
+      } else if (cutoffTs != null && Date.now() <= cutoffTs + LAST_CALL_OPEN_WITHIN_MS) {
+        // Only open a fresh window shortly after the cutoff.
         const start = Date.now();
         void AsyncStorage.setItem(storageKey, String(start));
         setWindowStart(start);
+      } else {
+        setWindowStart(null);
       }
     });
     return () => {

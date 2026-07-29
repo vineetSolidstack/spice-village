@@ -7,7 +7,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Camera, ImagePlus, X } from 'lucide-react-native';
+import { Camera, Copy, ImagePlus, X } from 'lucide-react-native';
 
 import { Button, Checkbox, Dialog, Input, Media, Switch, VegDot } from '../../components';
 import { gradient, photo as photoFill } from '../../components/Media';
@@ -147,6 +147,39 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     commit(true);
   };
 
+  // Save the current form as a brand-new item ("… (copy)"), so building a menu
+  // of similar combos is quick.
+  const duplicate = () => {
+    if (!valid) return;
+    if (backend === 'supabase' && uploadedUrls.some((u) => !/^https?:\/\//.test(u))) {
+      setPhotoError('A photo is still uploading — wait a moment and try again.');
+      return;
+    }
+    const gallery = uploadedUrls.length
+      ? uploadedUrls.map((u) => photoFill(u))
+      : [gradient('#E8A33D', '#C1440E')];
+    onSave(
+      {
+        ...draft.dish,
+        id: '',
+        category: category.trim() || undefined,
+        name: `${name.trim()} (copy)`,
+        description: description.trim(),
+        price: priceNum,
+        oldPrice: oldNum,
+        veg,
+        available,
+        hidden: false,
+        dailyUnits: unitsNum,
+        image: gallery[0],
+        gallery,
+      },
+      isCombo,
+      unitsNum != null ? { units: unitsNum, repeat: true } : undefined,
+    );
+    onClose();
+  };
+
   const runUpload = async (take: boolean) => {
     const picked = take ? await captureDishPhoto() : await pickDishPhoto();
     if (!picked) return;
@@ -193,6 +226,16 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
             <Button variant="ghost" onPress={onClose}>
               Cancel
             </Button>
+            {editing ? (
+              <Button
+                variant="secondary"
+                disabled={!valid || uploading}
+                icon={<Copy size={15} color={colors.textBrand} strokeWidth={2} />}
+                onPress={duplicate}
+              >
+                Copy
+              </Button>
+            ) : null}
             <Button disabled={!valid || uploading} onPress={onSubmit}>
               {uploading ? 'Uploading…' : editing ? 'Save item' : 'Add item'}
             </Button>

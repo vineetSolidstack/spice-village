@@ -418,6 +418,20 @@ export async function saveDishRemote(
   }
 }
 
+/** Persist a new menu order: sort_order = position in the given id list. */
+export async function saveDishOrderRemote(orderedIds: string[]): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    await Promise.all(
+      orderedIds.map((id, i) => db.from('dishes').update({ sort_order: i }).eq('id', id)),
+    );
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] saveDishOrderRemote failed', error);
+    return false;
+  }
+}
+
 export async function deleteDishRemote(dishId: string): Promise<boolean> {
   try {
     const db = requireSupabase();

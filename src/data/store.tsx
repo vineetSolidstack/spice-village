@@ -156,6 +156,8 @@ type StoreValue = {
   setDishAvailability: (kitchenSlug: string, dishId: string, available: boolean) => void;
   /** Take a dish out of the customer app entirely (or put it back). */
   setDishHidden: (kitchenSlug: string, dishId: string, hidden: boolean) => void;
+  /** Move a dish up/down within its group (combos or meals) and persist order. */
+  moveDish: (kitchenSlug: string, dishId: string, isCombo: boolean, dir: 'up' | 'down') => void;
   removeDish: (kitchenSlug: string, dishId: string) => void;
   /** Create a dish (blank id) or replace an existing one. Returns false if
    *  the server write failed (customers won't see the change). */
@@ -585,6 +587,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
   }, [refreshDailyTotal]);
 
+  const moveDish = useCallback(
+    (kitchenSlug: string, dishId: string, isCombo: boolean, dir: 'up' | 'down') => {
+      setKitchens((current) =>
+        current.map((k) => {
+          if (k.slug !== kitchenSlug) return k;
+          const list = [...(isCombo ? k.combos : k.menu)];
+          const idx = list.findIndex((d) => d.id === dishId);
+          const swap = dir === 'up' ? idx - 1 : idx + 1;
+          if (idx < 0 || swap < 0 || swap >= list.length) return k;
+          [list[idx], list[swap]] = [list[swap], list[idx]];
+          const combos = isCombo ? list : k.combos;
+          const menu = isCombo ? k.menu : list;
+          // Persist the whole kitchen's order (combos first, then meals).
+          if (isSupabaseConfigured) {
+            void fetchApi.saveDishOrderRemote([...combos, ...menu].map((d) => d.id));
+          }
+          return { ...k, combos, menu };
+        }),
+      );
+    },
+    [],
+  );
+
   const removeDish = useCallback((kitchenSlug: string, dishId: string) => {
     if (isSupabaseConfigured) void fetchApi.deleteDishRemote(dishId);
     setKitchens((current) =>
@@ -812,6 +837,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addSlot,
       setDishAvailability,
       setDishHidden,
+      moveDish,
       removeDish,
       saveDish,
       submitBulkRequest,
@@ -854,6 +880,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addSlot,
       setDishAvailability,
       setDishHidden,
+      moveDish,
       removeDish,
       saveDish,
       submitBulkRequest,

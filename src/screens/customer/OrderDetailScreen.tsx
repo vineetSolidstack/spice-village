@@ -6,10 +6,11 @@
  * scanning yields "500-07" and the kitchen resolves it server-side.
  */
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
+import { Share2 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-import { AppBar, Badge, Screen } from '../../components';
+import { AppBar, Badge, Button, Screen } from '../../components';
 import { colors, displayFont, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
@@ -28,6 +29,15 @@ export function OrderDetailScreen({ navigation, route }: OrderStackScreen<'Order
   if (!order) return null;
 
   const items = order.lines.reduce((sum, l) => sum + l.quantity, 0);
+
+  const onShare = () => {
+    void Share.share({
+      message:
+        `My ${order.kitchenName} order is in! 🍛\n` +
+        `Pickup code: ${order.slotCode} · ${order.slotTime}\n` +
+        `Ref ${order.ref}. Pre-order yours on Nandhan Delight.`,
+    });
+  };
 
   return (
     <Screen bottomInset={16}>
@@ -60,6 +70,15 @@ export function OrderDetailScreen({ navigation, route }: OrderStackScreen<'Order
         <Text style={[type.body(13, 600), styles.footer]}>
           {order.kitchenName} · {plural(items, 'item')} · {order.when}
         </Text>
+
+        <Button
+          variant="secondary"
+          block
+          icon={<Share2 size={16} color={colors.textBrand} strokeWidth={2} />}
+          onPress={onShare}
+        >
+          Share on WhatsApp
+        </Button>
       </View>
     </Screen>
   );
