@@ -154,6 +154,8 @@ type StoreValue = {
   addSlot: (time: string) => void;
 
   setDishAvailability: (kitchenSlug: string, dishId: string, available: boolean) => void;
+  /** Take a dish out of the customer app entirely (or put it back). */
+  setDishHidden: (kitchenSlug: string, dishId: string, hidden: boolean) => void;
   removeDish: (kitchenSlug: string, dishId: string) => void;
   /** Create a dish (blank id) or replace an existing one. Returns false if
    *  the server write failed (customers won't see the change). */
@@ -540,8 +542,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // After an item is switched on/off or taken out, the day's total changes
+  // (it only counts available, visible items). Re-pull just today's total.
+  const refreshDailyTotal = useCallback((kitchenSlug: string) => {
+    if (!isSupabaseConfigured) return;
+    void fetchApi.fetchTodayStock(kitchenSlug).then((s) => {
+      if (s) setDailyStock(s);
+    });
+  }, []);
+
   const setDishAvailability = useCallback((kitchenSlug: string, dishId: string, available: boolean) => {
-    if (isSupabaseConfigured) void fetchApi.setDishAvailableRemote(dishId, available);
+    if (isSupabaseConfigured) {
+      void fetchApi.setDishAvailableRemote(dishId, available).then(() => refreshDailyTotal(kitchenSlug));
+    }
     setKitchens((current) =>
       current.map((k) =>
         k.slug !== kitchenSlug
@@ -553,7 +566,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             },
       ),
     );
-  }, []);
+  }, [refreshDailyTotal]);
+
+  const setDishHidden = useCallback((kitchenSlug: string, dishId: string, hidden: boolean) => {
+    if (isSupabaseConfigured) {
+      void fetchApi.setDishHiddenRemote(dishId, hidden).then(() => refreshDailyTotal(kitchenSlug));
+    }
+    setKitchens((current) =>
+      current.map((k) =>
+        k.slug !== kitchenSlug
+          ? k
+          : {
+              ...k,
+              menu: k.menu.map((d) => (d.id === dishId ? { ...d, hidden } : d)),
+              combos: k.combos.map((d) => (d.id === dishId ? { ...d, hidden } : d)),
+            },
+      ),
+    );
+  }, [refreshDailyTotal]);
 
   const removeDish = useCallback((kitchenSlug: string, dishId: string) => {
     if (isSupabaseConfigured) void fetchApi.deleteDishRemote(dishId);
@@ -781,6 +811,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSlotCapacity,
       addSlot,
       setDishAvailability,
+      setDishHidden,
       removeDish,
       saveDish,
       submitBulkRequest,
@@ -822,6 +853,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setSlotCapacity,
       addSlot,
       setDishAvailability,
+      setDishHidden,
       removeDish,
       saveDish,
       submitBulkRequest,

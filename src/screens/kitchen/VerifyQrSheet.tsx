@@ -83,6 +83,11 @@ export function VerifyQrSheet({ order, onClose, onVerified, resolve }: VerifyQrS
           <View style={styles.expected}>
             <Text style={[type.body(13, 600), { color: colors.textMuted }]}>Expecting</Text>
             <SlotCodeChip code={order.slotCode} size="md" />
+            {order.sequence ? (
+              <Text style={[type.body(13, 800), { color: colors.textBrand }]}>
+                Order #{order.sequence} today
+              </Text>
+            ) : null}
             <Text style={[type.body(13, 600), { color: colors.textMuted }]}>{order.customerName}</Text>
           </View>
 

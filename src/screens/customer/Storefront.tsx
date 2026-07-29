@@ -103,7 +103,8 @@ export function Storefront({
    * kitchen that never sets categories still gets a sensible menu.
    */
   const sections = useMemo<Section[]>(() => {
-    const all = [...kitchen.combos, ...kitchen.menu];
+    // "Taken out" items are hidden from customers entirely.
+    const all = [...kitchen.combos, ...kitchen.menu].filter((d) => !d.hidden);
     const q = query.trim().toLowerCase();
     const matching = q
       ? all.filter((d) => `${d.name} ${d.description}`.toLowerCase().includes(q))
@@ -126,7 +127,10 @@ export function Storefront({
   }, [kitchen, query, favourites]);
 
   const popular = useMemo(
-    () => [...kitchen.combos, ...kitchen.menu].filter((d) => d.available !== false).slice(0, POPULAR_COUNT),
+    () =>
+      [...kitchen.combos, ...kitchen.menu]
+        .filter((d) => d.available !== false && !d.hidden)
+        .slice(0, POPULAR_COUNT),
     [kitchen],
   );
 

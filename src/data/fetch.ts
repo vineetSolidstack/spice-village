@@ -57,6 +57,7 @@ type DishRow = {
   bulk_available: boolean | null;
   bulk_price: number | null;
   daily_units: number | null;
+  hidden: boolean | null;
 };
 
 function toDish(d: DishRow): Dish {
@@ -82,6 +83,7 @@ function toDish(d: DishRow): Dish {
     dailyUnits: d.daily_units,
     // remainingToday is filled in from menu_stock after the catalogue loads.
     remainingToday: d.daily_units == null ? null : d.daily_units,
+    hidden: d.hidden === true,
   };
 }
 
@@ -92,7 +94,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
     .from('kitchens')
     .select(
       'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, order_cutoff, bulk_enabled, bulk_min_units, bulk_note,' +
-        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units )',
+        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units, hidden )',
     )
     .eq('state', 'approved')
     .order('featured', { ascending: false });
@@ -161,6 +163,7 @@ type OrderRow = {
   id: string;
   ref: string;
   slot_code: string;
+  sequence: number | null;
   item_count: number;
   total: number;
   status: string;
@@ -176,6 +179,7 @@ function toOrder(o: OrderRow): Order {
   return {
     ref: o.ref,
     slotCode: o.slot_code,
+    sequence: o.sequence ?? undefined,
     slotTime,
     kitchenSlug: o.kitchens?.slug ?? '',
     kitchenName: o.kitchens?.name ?? '',
@@ -193,7 +197,7 @@ function toOrder(o: OrderRow): Order {
 }
 
 const ORDER_SELECT =
-  'id, ref, slot_code, item_count, total, status, placed_at,' +
+  'id, ref, slot_code, sequence, item_count, total, status, placed_at,' +
   ' kitchens ( slug, name ), pickup_slots ( time_label ), profiles ( full_name ),' +
   ' order_lines ( dish_id, dish_name, quantity, unit_price )';
 
@@ -434,6 +438,19 @@ export async function setDishAvailableRemote(dishId: string, available: boolean)
     return true;
   } catch (error) {
     console.warn('[spice-route] setDishAvailableRemote failed', error);
+    return false;
+  }
+}
+
+/** Take a dish out of the customer app (hidden=true) or put it back. */
+export async function setDishHiddenRemote(dishId: string, hidden: boolean): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { error } = await db.from('dishes').update({ hidden }).eq('id', dishId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] setDishHiddenRemote failed', error);
     return false;
   }
 }

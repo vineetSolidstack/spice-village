@@ -4,7 +4,7 @@
  */
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react-native';
 
 import {
   Button,
@@ -25,7 +25,8 @@ import type { Dish } from '../../data/types';
 
 export function KitchenMenuScreen() {
   const type = useType();
-  const { getKitchen, showcaseSlug, setDishAvailability, removeDish, saveDish, loading } = useStore();
+  const { getKitchen, showcaseSlug, setDishAvailability, setDishHidden, removeDish, saveDish, loading } =
+    useStore();
   const { showToast } = useToast();
   const [confirming, setConfirming] = useState<Dish | null>(null);
   const [editing, setEditing] = useState<DishDraft | null>(null);
@@ -72,7 +73,11 @@ export function KitchenMenuScreen() {
         {items.map(({ dish, isCombo }) => (
           <View
             key={dish.id}
-            style={[styles.row, shadow.card, dish.available === false ? styles.dimmed : null]}
+            style={[
+              styles.row,
+              shadow.card,
+              dish.available === false || dish.hidden ? styles.dimmed : null,
+            ]}
           >
             <Media fill={dish.image} style={styles.thumb} />
 
@@ -86,12 +91,32 @@ export function KitchenMenuScreen() {
                 </Text>
                 <Text style={[type.body(13, 600), styles.oldPrice]}>{money(dish.oldPrice)}</Text>
               </View>
+              {dish.hidden ? (
+                <Text style={[type.body(11, 700), { color: colors.statusDanger }]}>
+                  Taken out · hidden from customers
+                </Text>
+              ) : null}
             </View>
 
-            <Switch
-              checked={dish.available !== false}
-              onChange={(value) => setDishAvailability(saveSlug, dish.id, value)}
-            />
+            {/* Available switch is only meaningful while the item is visible. */}
+            {!dish.hidden ? (
+              <Switch
+                checked={dish.available !== false}
+                onChange={(value) => setDishAvailability(saveSlug, dish.id, value)}
+              />
+            ) : null}
+
+            <IconButton
+              label={dish.hidden ? `Put ${dish.name} back` : `Take ${dish.name} out`}
+              size={34}
+              onPress={() => setDishHidden(saveSlug, dish.id, !dish.hidden)}
+            >
+              {dish.hidden ? (
+                <EyeOff size={16} color={colors.statusDanger} strokeWidth={2} />
+              ) : (
+                <Eye size={16} color={colors.textBrand} strokeWidth={2} />
+              )}
+            </IconButton>
 
             <IconButton
               label={`Edit ${dish.name}`}

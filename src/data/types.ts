@@ -18,6 +18,8 @@ export type Dish = {
   gallery?: MediaFill[];
   /** Kitchen-side availability toggle; unavailable dishes dim in the menu. */
   available?: boolean;
+  /** "Taken out" — hidden from the customer app entirely (owner still sees it). */
+  hidden?: boolean;
   /** Menu section this dish appears under; falls back to Combos / Meals. */
   category?: string;
   /** Whether this dish can be ordered in bulk. */
@@ -77,6 +79,8 @@ export type Order = {
   ref: string;
   /** Slot-sequence code and QR payload, e.g. "500-07". */
   slotCode: string;
+  /** True order position for the slot (1, 2, 3 …); the printed code is shifted. */
+  sequence?: number;
   slotTime: string;
   kitchenSlug: string;
   kitchenName: string;
