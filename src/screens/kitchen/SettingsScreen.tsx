@@ -3,7 +3,7 @@
  * to the customer app.
  */
 import React, { useEffect, useState } from 'react';
-import { Camera, ImagePlus, Ticket } from 'lucide-react-native';
+import { Camera, FileText, ImagePlus, Ticket } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -23,6 +23,7 @@ import { useStore } from '../../data/store';
 import { captureDishPhoto, pickDishPhoto, uploadDishPhoto } from '../../data/upload';
 import { saveKitchenDetails } from '../../data/fetch';
 import { CouponsSheet } from './CouponsSheet';
+import { ReportsSheet } from './ReportsSheet';
 import { useAuth } from '../../state/auth';
 
 export function KitchenSettingsScreen() {
@@ -69,6 +70,7 @@ export function KitchenSettingsScreen() {
   const [pickupWindow, setPickupWindow] = useState(business.pickupWindow);
   const [cutoff, setCutoff] = useState(business.orderCutoff);
   const [showCoupons, setShowCoupons] = useState(false);
+  const [showReports, setShowReports] = useState(false);
 
   useEffect(() => {
     setName(business.kitchenName);
@@ -178,6 +180,14 @@ export function KitchenSettingsScreen() {
           Discount codes
         </Button>
 
+        <Button
+          variant="secondary"
+          icon={<FileText size={16} color={colors.textBrand} strokeWidth={2} />}
+          onPress={() => setShowReports(true)}
+        >
+          Sales report (PDF)
+        </Button>
+
         <Text style={[type.body(12, 600), styles.backendNote]}>
           {backend === 'supabase'
             ? 'Live: reading and writing your Supabase data'
@@ -189,6 +199,12 @@ export function KitchenSettingsScreen() {
         </Button>
       </View>
       <CouponsSheet open={showCoupons} onClose={() => setShowCoupons(false)} />
+      <ReportsSheet
+        open={showReports}
+        onClose={() => setShowReports(false)}
+        kitchenSlug={showcaseSlug}
+        kitchenName={business.kitchenName}
+      />
     </Screen>
   );
 }

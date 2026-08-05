@@ -34,8 +34,6 @@ export function OrderRow({
   const type = useType();
   const next = NEXT_STATUS[order.status];
 
-  const summary = order.lines.map((l) => `${l.name} ×${l.quantity}`).join(', ');
-
   return (
     <View style={[styles.row, shadow.card]}>
       <View style={styles.head}>
@@ -47,7 +45,18 @@ export function OrderRow({
         <Badge tone={TONE[order.status]}>{order.status}</Badge>
       </View>
 
-      <Text style={[type.body(13, 600), { color: colors.textMuted }]}>{summary}</Text>
+      {/* Numbered list of the distinct dishes and their quantities. */}
+      <View style={styles.items}>
+        {order.lines.map((l, i) => (
+          <View key={`${l.dishId}-${i}`} style={styles.itemLine}>
+            <Text style={[type.body(13, 700), styles.itemNum]}>{i + 1}.</Text>
+            <Text style={[type.body(13, 600), styles.itemName]} numberOfLines={2}>
+              {l.name}
+            </Text>
+            <Text style={[type.body(13, 800), styles.itemQty]}>×{l.quantity}</Text>
+          </View>
+        ))}
+      </View>
 
       <View style={styles.foot}>
         <Text style={type.body(15, 800)}>{money(order.total)}</Text>
@@ -75,5 +84,10 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ref: { fontFamily: displayFont(800), fontSize: 13, letterSpacing: 0.52, color: colors.textBody },
   who: { flex: 1, color: colors.textMuted },
+  items: { gap: 4 },
+  itemLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  itemNum: { color: colors.textMuted, minWidth: 18 },
+  itemName: { flex: 1, color: colors.textBody },
+  itemQty: { color: colors.textBrand },
   foot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

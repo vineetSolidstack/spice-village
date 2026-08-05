@@ -98,6 +98,30 @@ export async function saveDishPhotoPath(dishId: string, url: string): Promise<bo
   }
 }
 
+/** Upload a generated month PDF to the private `reports` bucket. */
+export async function uploadReport(
+  kitchenSlug: string,
+  filename: string,
+  fileUri: string,
+): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const response = await fetch(fileUri);
+    const bytes = await response.arrayBuffer();
+    if (!bytes.byteLength) throw new Error('Empty report');
+    const key = `${kitchenSlug}/${filename}`;
+    const { error } = await db.storage.from('reports').upload(key, bytes, {
+      contentType: 'application/pdf',
+      upsert: true,
+    });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn('[spice-route] uploadReport failed', error);
+    return false;
+  }
+}
+
 /**
  * Upload a workshop cover photo. Keyed <user-id>/<file> so an instructor can
  * only write in their own folder. Returns the public URL, or null on failure.

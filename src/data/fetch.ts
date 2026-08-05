@@ -990,6 +990,31 @@ export async function applyCouponToOrder(orderId: string, code: string): Promise
   }
 }
 
+/** Orders placed within a date range for one kitchen (owner reporting). */
+export async function fetchOrdersInRange(
+  kitchenSlug: string,
+  startISO: string,
+  endISO: string,
+): Promise<Order[]> {
+  try {
+    const db = requireSupabase();
+    const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
+    if (!kitchen) return [];
+    const { data, error } = await db
+      .from('orders')
+      .select(ORDER_SELECT)
+      .eq('kitchen_id', (kitchen as { id: string }).id)
+      .gte('placed_at', startISO)
+      .lt('placed_at', endISO)
+      .order('placed_at', { ascending: true });
+    if (error) throw error;
+    return ((data ?? []) as unknown as OrderRow[]).map(toOrder);
+  } catch (e) {
+    console.warn('[spice-route] fetchOrdersInRange failed', e);
+    return [];
+  }
+}
+
 /* ------------------------------------------------------- pickup slots ---- */
 
 /** Add a pickup time for today. Capacity is effectively unlimited at the slot
