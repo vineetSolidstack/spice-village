@@ -5,7 +5,7 @@
  * is UX only: `place_order()` re-checks capacity under a row lock and can still
  * reject, which is surfaced rather than swallowed.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Clock } from 'lucide-react-native';
@@ -20,7 +20,7 @@ import { useAuth } from '../../state/auth';
 import { money } from '../../lib/format';
 import { useServiceWindow, LAST_CALL_MIN_ITEMS } from '../../lib/serviceWindow';
 import { paymentsEnabled, createRazorpayOrder, releaseUnpaidOrder, type RazorpayOrder } from '../../lib/pay';
-import { applyCouponToOrder, previewCoupon } from '../../data/fetch';
+import { applyCouponToOrder, previewCoupon, redeemRewardToOrder } from '../../data/fetch';
 import { PaymentScreen } from './PaymentScreen';
 import type { Slot } from '../../data/types';
 import type { CustomerStackScreen } from '../../navigation/types';
@@ -29,7 +29,8 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   const { t } = useLanguage();
   const type = useType();
   const insets = useSafeAreaInsets();
-  const { slots, placeOrder, getKitchen, business, backend, dailyStock } = useStore();
+  const { slots, placeOrder, getKitchen, business, backend, dailyStock, loyalty, refreshLoyalty } =
+    useStore();
   const { user } = useAuth();
   const cart = useCart();
   const { showToast } = useToast();
@@ -52,7 +53,20 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   const poolRemaining = Math.max(0, dailyStock.capacity - dailyStock.used);
   const poolLeft = poolRemaining >= cart.count ? poolRemaining : 0;
   const soldOut = poolRemaining <= 0;
-  const payable = Math.max(0, cart.total - couponDiscount);
+
+  // Stamp reward: the customer can make ONE reward-eligible item in the cart free.
+  const rewardEligibleIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (kitchen) for (const d of [...kitchen.combos, ...kitchen.menu]) if (d.rewardEligible) ids.add(d.id);
+    return ids;
+  }, [kitchen]);
+  const eligibleRows = cart.rows.filter((r) => rewardEligibleIds.has(r.id));
+  const canRedeem = loyalty.rewards > 0 && eligibleRows.length > 0;
+  const [rewardDishId, setRewardDishId] = useState<string | null>(null);
+  const rewardRow = canRedeem && rewardDishId ? cart.rows.find((r) => r.id === rewardDishId) : undefined;
+  const rewardDiscount = rewardRow ? rewardRow.price : 0;
+
+  const payable = Math.max(0, cart.total - couponDiscount - rewardDiscount);
 
   // During the last-call window, checkout is a "grab a 2-pack" — require 2+.
   const { phase: servicePhase } = useServiceWindow(
@@ -113,6 +127,14 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
     if (result.orderId && couponDiscount > 0 && coupon.trim()) {
       const applied = await applyCouponToOrder(result.orderId, coupon.trim());
       if (applied <= 0) showToast('That code couldn’t be applied', 'danger');
+    }
+
+    // Redeem a stamp reward on the chosen item — server lowers the order total
+    // and consumes one reward before the payment amount is read.
+    if (result.orderId && rewardDishId && rewardDiscount > 0) {
+      const off = await redeemRewardToOrder(result.orderId, rewardDishId);
+      if (off > 0) refreshLoyalty();
+      else showToast('Your free combo couldn’t be applied this time', 'danger');
     }
 
     // Pay-at-pickup (no gateway configured, or demo data): done here.
@@ -236,6 +258,32 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
           ) : null}
         </View>
 
+        {/* ------------------------------------------- stamp reward */}
+        {canRedeem ? (
+          <View style={styles.section}>
+            <Text style={[type.display(19, 700)]}>🎁 Your free combo</Text>
+            <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+              You’ve earned a free combo — pick which item in your cart to use it on.
+            </Text>
+            <View style={styles.rewardChips}>
+              {eligibleRows.map((row) => {
+                const on = rewardDishId === row.id;
+                return (
+                  <Pressable
+                    key={row.id}
+                    onPress={() => setRewardDishId(on ? null : row.id)}
+                    style={[styles.rewardChip, on ? styles.rewardChipOn : null]}
+                  >
+                    <Text style={[type.body(13, 700), on ? { color: colors.textOnBrand } : null]}>
+                      {on ? '✓ ' : ''}{row.name} · free
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
         {/* ------------------------------------------------------ coupon */}
         {couponsAvailable ? (
           <View style={styles.section}>
@@ -284,6 +332,9 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
             ) : null}
             {couponDiscount > 0 ? (
               <BillRow label={`Coupon ${coupon.trim().toUpperCase()}`} value={`− ${money(couponDiscount)}`} good />
+            ) : null}
+            {rewardDiscount > 0 ? (
+              <BillRow label="🎁 Free combo (stamps)" value={`− ${money(rewardDiscount)}`} good />
             ) : null}
             <View style={styles.billTotal}>
               <Text style={type.body(16, 800)}>Total</Text>
@@ -444,6 +495,15 @@ const styles = StyleSheet.create({
   section: { gap: 10 },
   couponRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   couponInput: { flex: 1 },
+  rewardChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  rewardChip: {
+    borderWidth: 1.5,
+    borderColor: colors.actionPrimary,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  rewardChipOn: { backgroundColor: colors.actionPrimary, borderColor: colors.actionPrimary },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionHint: { color: colors.textMuted },
   slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

@@ -40,6 +40,7 @@ import type {
   Dish,
   Kitchen,
   KitchenState,
+  Loyalty,
   ManagedKitchen,
   Order,
   PaymentMode,
@@ -137,6 +138,11 @@ type StoreValue = {
   acceptingOrders: boolean;
   setAcceptingOrders: (value: boolean) => void;
 
+  /** The signed-in customer's stamp card for the showcase kitchen. */
+  loyalty: Loyalty;
+  /** Re-read the loyalty card (e.g. after an order or a redemption). */
+  refreshLoyalty: () => void;
+
   getKitchen: (slug: string) => Kitchen | undefined;
 
   /** Checkout. Rejects (returns null) if the slot filled up first. */
@@ -217,6 +223,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // the actually-loaded kitchen on refresh — its real slug may differ (e.g. a
   // kitchen created through the application flow gets a suffixed slug).
   const [showcaseSlug, setShowcaseSlug] = useState<string>(SHOWCASE_KITCHEN_SLUG);
+  const [loyalty, setLoyalty] = useState<Loyalty>({ stamps: 0, rewards: 0, goal: 8 });
   // Today's total units (sum across items). Empty until the owner sets item units.
   const [dailyStock, setDailyStock] = useState<{ capacity: number; used: number }>(
     seed({ capacity: 50, used: 0 }, { capacity: 0, used: 0 }),
@@ -369,6 +376,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         catalogue[0].slug;
       // Point the whole app at the kitchen that actually loaded.
       setShowcaseSlug(showcase);
+
+      // The signed-in customer's stamp card for this kitchen.
+      void fetchApi.fetchLoyalty(showcase).then((l) => {
+        if (l) setLoyalty(l);
+      });
 
       // Merge today's per-item remaining units into the showcase kitchen's menu,
       // so each combo can show "N left" and sell out on its own.
@@ -553,6 +565,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const refreshLoyalty = useCallback(() => {
+    if (!isSupabaseConfigured) return;
+    void fetchApi.fetchLoyalty(showcaseSlug).then((l) => {
+      if (l) setLoyalty(l);
+    });
+  }, [showcaseSlug]);
+
   const setDishAvailability = useCallback((kitchenSlug: string, dishId: string, available: boolean) => {
     if (isSupabaseConfigured) {
       void fetchApi.setDishAvailableRemote(dishId, available).then(() => refreshDailyTotal(kitchenSlug));
@@ -664,6 +683,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           veg: withId.veg,
           available: withId.available,
           category: withId.category,
+          rewardEligible: withId.rewardEligible,
           imageUrl: photoUrls[0],
           images: photoUrls.length ? photoUrls : undefined,
         },
@@ -829,6 +849,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       users,
       acceptingOrders,
       setAcceptingOrders,
+      loyalty,
+      refreshLoyalty,
       getKitchen,
       placeOrder,
       advanceOrder,
@@ -872,6 +894,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       managedKitchens,
       users,
       acceptingOrders,
+      loyalty,
+      refreshLoyalty,
       getKitchen,
       placeOrder,
       advanceOrder,

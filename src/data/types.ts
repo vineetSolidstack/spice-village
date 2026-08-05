@@ -20,6 +20,8 @@ export type Dish = {
   available?: boolean;
   /** "Taken out" — hidden from the customer app entirely (owner still sees it). */
   hidden?: boolean;
+  /** May be chosen as the free stamp-card reward. */
+  rewardEligible?: boolean;
   /** Menu section this dish appears under; falls back to Combos / Meals. */
   category?: string;
   /** Whether this dish can be ordered in bulk. */
@@ -179,4 +181,14 @@ export type PlatformUser = {
   name: string;
   role: string;
   orders: number | null;
+};
+
+/** A customer's stamp card for a kitchen. */
+export type Loyalty = {
+  /** Stamps on the current card (0…goal-1 after roll-over). */
+  stamps: number;
+  /** Free-combo rewards ready to redeem. */
+  rewards: number;
+  /** Stamps needed to earn a reward. */
+  goal: number;
 };

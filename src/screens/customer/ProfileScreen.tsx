@@ -11,6 +11,7 @@ import {
   Button,
   Dialog,
   Input,
+  LoyaltyCard,
   Switch,
   useToast,
   LanguagePicker,
@@ -45,7 +46,7 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
   const { t, language, setLanguage } = useLanguage();
   const type = useType();
   const { setRole, roles, user, signOut, demo, refreshRoles } = useAuth();
-  const { bookings, refresh } = useStore();
+  const { bookings, refresh, loyalty } = useStore();
   const { showToast } = useToast();
   const [switching, setSwitching] = useState(false);
   const [showBookings, setShowBookings] = useState(false);
@@ -220,6 +221,8 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
             </Text>
           </View>
         </View>
+
+        {!demo ? <LoyaltyCard loyalty={loyalty} /> : null}
 
         <View style={[styles.rows, shadow.card]}>
           {rows.map((row, i) => (

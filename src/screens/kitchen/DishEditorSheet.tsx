@@ -55,6 +55,8 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
   const [veg, setVeg] = useState(true);
   const [isCombo, setIsCombo] = useState(false);
   const [available, setAvailable] = useState(true);
+  // Customers may pick this as their free stamp-card reward.
+  const [rewardEligible, setRewardEligible] = useState(false);
   // Units made per day. Empty = no limit (unlimited). See item_stock.sql.
   const [units, setUnits] = useState('');
   // When changing an existing item's units, ask whether it's everyday or today.
@@ -77,6 +79,7 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
     setVeg(d.veg);
     setIsCombo(draft.isCombo);
     setAvailable(d.available !== false);
+    setRewardEligible(d.rewardEligible === true);
     // Existing uploaded photos come back on the gallery as photo fills.
     const existing = (d.gallery ?? [d.image])
       .filter((m) => m.kind === 'photo')
@@ -121,6 +124,7 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
         oldPrice: oldNum,
         veg,
         available,
+        rewardEligible,
         dailyUnits: unitsNum,
         image: gallery[0],
         gallery,
@@ -169,6 +173,7 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
         oldPrice: oldNum,
         veg,
         available,
+        rewardEligible,
         hidden: false,
         dailyUnits: unitsNum,
         image: gallery[0],
@@ -361,6 +366,16 @@ export function DishEditorSheet({ draft, onClose, onSave }: DishEditorSheetProps
         <View style={styles.switchRow}>
           <Text style={type.body(14, 600)}>Available</Text>
           <Switch checked={available} onChange={setAvailable} />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={type.body(14, 600)}>Free with stamps</Text>
+            <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+              Customers can choose this as their free stamp-card reward
+            </Text>
+          </View>
+          <Switch checked={rewardEligible} onChange={setRewardEligible} />
         </View>
       </ScrollView>
     </Dialog>

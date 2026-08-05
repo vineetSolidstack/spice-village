@@ -15,6 +15,7 @@ import type {
   BulkRequest,
   Dish,
   Kitchen,
+  Loyalty,
   Order,
   OrderStatus,
   Slot,
@@ -58,6 +59,7 @@ type DishRow = {
   bulk_price: number | null;
   daily_units: number | null;
   hidden: boolean | null;
+  reward_eligible: boolean | null;
 };
 
 function toDish(d: DishRow): Dish {
@@ -84,6 +86,7 @@ function toDish(d: DishRow): Dish {
     // remainingToday is filled in from menu_stock after the catalogue loads.
     remainingToday: d.daily_units == null ? null : d.daily_units,
     hidden: d.hidden === true,
+    rewardEligible: d.reward_eligible === true,
   };
 }
 
@@ -94,7 +97,7 @@ export async function fetchKitchens(): Promise<Kitchen[]> {
     .from('kitchens')
     .select(
       'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, order_cutoff, bulk_enabled, bulk_min_units, bulk_note,' +
-        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units, hidden )',
+        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units, hidden, reward_eligible )',
     )
     .eq('state', 'approved')
     .order('featured', { ascending: false });
@@ -377,6 +380,7 @@ export async function saveDishRemote(
   dish: {
     id: string; name: string; description: string; price: number; oldPrice: number;
     veg: boolean; available?: boolean; category?: string; imageUrl?: string; images?: string[];
+    rewardEligible?: boolean;
   },
   isCombo: boolean,
 ): Promise<{ id: string | null; error: string | null }> {
@@ -396,6 +400,7 @@ export async function saveDishRemote(
       is_combo: isCombo,
       available: dish.available !== false,
       category: dish.category ?? null,
+      reward_eligible: dish.rewardEligible === true,
       ...(dish.imageUrl ? { image_path: dish.imageUrl } : {}),
       ...(dish.images ? { images: dish.images } : {}),
     };
@@ -549,6 +554,40 @@ export async function claimKitchenInvite(code: string): Promise<{ name: string }
   } catch (error) {
     console.warn('[spice-route] claimKitchenInvite failed', error);
     return null;
+  }
+}
+
+/* ------------------------------------------------------------- loyalty --- */
+
+/** The signed-in customer's stamp card for a kitchen. */
+export async function fetchLoyalty(kitchenSlug: string): Promise<Loyalty | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('my_loyalty', { p_kitchen_slug: kitchenSlug });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return row
+      ? { stamps: row.stamps ?? 0, rewards: row.rewards ?? 0, goal: row.goal ?? 8 }
+      : null;
+  } catch (e) {
+    console.warn('[spice-route] my_loyalty failed', e);
+    return null;
+  }
+}
+
+/** Apply one free-combo reward to a reserved order. Returns ₹ taken off, or 0. */
+export async function redeemRewardToOrder(orderId: string, dishId: string): Promise<number> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('redeem_reward_to_order', {
+      p_order_id: orderId,
+      p_dish_id: dishId,
+    });
+    if (error) throw error;
+    return (data as number) ?? 0;
+  } catch (e) {
+    console.warn('[spice-route] redeem_reward_to_order failed', e);
+    return 0;
   }
 }
 
