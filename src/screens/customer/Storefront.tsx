@@ -167,11 +167,8 @@ export function Storefront({
     <View style={styles.root}>
       <ScrollView
         ref={scrollRef}
-        stickyHeaderIndices={[1]}
-        onScroll={onScroll}
-        scrollEventThrottle={32}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void refresh()} />}
-        contentContainerStyle={{ paddingBottom: cartCount > 0 ? 110 : 32 }}
+        contentContainerStyle={{ paddingBottom: (cartCount > 0 ? 96 : 24) + insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
         {/* ---------------------------------------------------------- hero */}

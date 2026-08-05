@@ -53,5 +53,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  splash: { flex: 1, backgroundColor: colors.surfacePage },
+  // Matches the native splash + the door animation's closed state, so the boot
+  // sequence is one continuous paprika screen with no flash.
+  splash: { flex: 1, backgroundColor: '#C1440E' },
 });

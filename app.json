@@ -11,7 +11,8 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFF8F0",
     "splash": {
-      "backgroundColor": "#FFF8F0",
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#C1440E",
       "resizeMode": "contain"
     },
     "ios": {
@@ -57,7 +58,16 @@
         }
       ],
       "expo-web-browser",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#C1440E"
+        }
+      ]
     ],
     "extra": {
       "eas": {
