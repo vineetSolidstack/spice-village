@@ -42,6 +42,7 @@ export function SingleKitchenHome({ navigation }: CustomerStackScreen<'Home'>) {
       cartCount={cart.count}
       pickupWindow={business.pickupWindow}
       onAdd={(dishId) => cart.add(kitchen.slug, dishId, 1)}
+      onRemove={(dishId) => cart.add(kitchen.slug, dishId, -1)}
       onOpenCart={() => navigation.navigate('Cart')}
       // Hidden entirely when the owner has switched bulk ordering off.
       onOpenBulk={

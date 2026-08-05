@@ -9,7 +9,7 @@
  */
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Check, Heart, Plus } from 'lucide-react-native';
+import { Check, Heart, Minus, Plus } from 'lucide-react-native';
 
 import { colors, motion, radius, shadow } from '../theme';
 import { useType } from '../theme/useType';
@@ -42,6 +42,8 @@ export type MenuRowProps = {
   favourite?: boolean;
   onToggleFavourite?: () => void;
   onAdd: () => void;
+  /** Remove one from the cart; enables the − / + stepper when in the cart. */
+  onRemove?: () => void;
   onPress?: () => void;
 };
 
@@ -61,6 +63,7 @@ export function MenuRow({
   favourite,
   onToggleFavourite,
   onAdd,
+  onRemove,
   onPress,
 }: MenuRowProps) {
   const type = useType();
@@ -135,26 +138,49 @@ export function MenuRow({
             />
           </Pressable>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={inCart ? `${name}, ${quantity} in cart` : `Add ${name}`}
-          disabled={!canOrder}
-          onPress={onAdd}
-          style={({ pressed }) => [
-            styles.add,
-            shadow.card,
-            inCart ? styles.addActive : null,
-            { transform: [{ scale: pressed ? motion.pressScale : 1 }] },
-          ]}
-        >
-          {inCart ? (
-            <View style={styles.addCount}>
-              <Text style={[type.body(13, 800), styles.addCountText]}>{quantity}</Text>
-            </View>
-          ) : (
-            <Plus size={20} color={colors.textBody} strokeWidth={2.5} />
-          )}
-        </Pressable>
+        {inCart && onRemove ? (
+          <View style={[styles.stepper, shadow.card]}>
+            <Pressable
+              accessibilityLabel={`Remove one ${name}`}
+              onPress={onRemove}
+              hitSlop={6}
+              style={styles.stepBtn}
+            >
+              <Minus size={18} color="#FFFFFF" strokeWidth={3} />
+            </Pressable>
+            <Text style={[type.body(14, 800), styles.stepCount]}>{quantity}</Text>
+            <Pressable
+              accessibilityLabel={`Add one more ${name}`}
+              disabled={!canOrder}
+              onPress={onAdd}
+              hitSlop={6}
+              style={styles.stepBtn}
+            >
+              <Plus size={18} color="#FFFFFF" strokeWidth={3} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={inCart ? `${name}, ${quantity} in cart` : `Add ${name}`}
+            disabled={!canOrder}
+            onPress={onAdd}
+            style={({ pressed }) => [
+              styles.add,
+              shadow.card,
+              inCart ? styles.addActive : null,
+              { transform: [{ scale: pressed ? motion.pressScale : 1 }] },
+            ]}
+          >
+            {inCart ? (
+              <View style={styles.addCount}>
+                <Text style={[type.body(13, 800), styles.addCountText]}>{quantity}</Text>
+              </View>
+            ) : (
+              <Plus size={20} color={colors.textBody} strokeWidth={2.5} />
+            )}
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );
@@ -169,6 +195,7 @@ export function MenuCard({
   badge,
   quantity = 0,
   onAdd,
+  onRemove,
 }: {
   name: string;
   price: number;
@@ -177,6 +204,7 @@ export function MenuCard({
   badge?: string;
   quantity?: number;
   onAdd: () => void;
+  onRemove?: () => void;
 }) {
   const type = useType();
   return (
@@ -188,25 +216,37 @@ export function MenuCard({
             <Text style={[type.body(11, 800), styles.cardBadgeText]}>{badge}</Text>
           </View>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Add ${name}`}
-          onPress={onAdd}
-          style={({ pressed }) => [
-            styles.add,
-            shadow.card,
-            quantity > 0 ? styles.addActive : null,
-            { transform: [{ scale: pressed ? motion.pressScale : 1 }] },
-          ]}
-        >
-          {quantity > 0 ? (
-            <View style={styles.addCount}>
-              <Text style={[type.body(13, 800), styles.addCountText]}>{quantity}</Text>
-            </View>
-          ) : (
-            <Plus size={20} color={colors.textBody} strokeWidth={2.5} />
-          )}
-        </Pressable>
+        {quantity > 0 && onRemove ? (
+          <View style={[styles.stepper, shadow.card]}>
+            <Pressable accessibilityLabel={`Remove one ${name}`} onPress={onRemove} hitSlop={6} style={styles.stepBtn}>
+              <Minus size={18} color="#FFFFFF" strokeWidth={3} />
+            </Pressable>
+            <Text style={[type.body(14, 800), styles.stepCount]}>{quantity}</Text>
+            <Pressable accessibilityLabel={`Add one more ${name}`} onPress={onAdd} hitSlop={6} style={styles.stepBtn}>
+              <Plus size={18} color="#FFFFFF" strokeWidth={3} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Add ${name}`}
+            onPress={onAdd}
+            style={({ pressed }) => [
+              styles.add,
+              shadow.card,
+              quantity > 0 ? styles.addActive : null,
+              { transform: [{ scale: pressed ? motion.pressScale : 1 }] },
+            ]}
+          >
+            {quantity > 0 ? (
+              <View style={styles.addCount}>
+                <Text style={[type.body(13, 800), styles.addCountText]}>{quantity}</Text>
+              </View>
+            ) : (
+              <Plus size={20} color={colors.textBody} strokeWidth={2.5} />
+            )}
+          </Pressable>
+        )}
       </View>
       <Text style={[type.body(14, 700), styles.cardName]} numberOfLines={1}>
         {name}
@@ -274,6 +314,19 @@ const styles = StyleSheet.create({
   addActive: { backgroundColor: colors.actionPrimary },
   addCount: { alignItems: 'center', justifyContent: 'center' },
   addCountText: { color: '#FFFFFF' },
+  stepper: {
+    position: 'absolute',
+    right: -8,
+    bottom: -8,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.actionPrimary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  stepBtn: { width: 30, height: 38, alignItems: 'center', justifyContent: 'center' },
+  stepCount: { color: '#FFFFFF', minWidth: 20, textAlign: 'center' },
   card: { width: CARD_W, gap: 4 },
   cardMediaWrap: { width: CARD_W, height: CARD_W * 0.82, marginBottom: 6 },
   cardMedia: { width: '100%', height: '100%', borderRadius: radius.md },

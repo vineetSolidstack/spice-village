@@ -26,6 +26,7 @@ export function KitchenScreen({ navigation, route }: CustomerStackScreen<'Kitche
       cartCount={cart.count}
       pickupWindow={business.pickupWindow}
       onAdd={(dishId) => cart.add(kitchen.slug, dishId, 1)}
+      onRemove={(dishId) => cart.add(kitchen.slug, dishId, -1)}
       onOpenCart={() => navigation.navigate('Cart')}
       onBack={() => navigation.goBack()}
       onOpenBulk={

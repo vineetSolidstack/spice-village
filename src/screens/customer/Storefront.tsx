@@ -48,6 +48,8 @@ export type StorefrontProps = {
   cart: Record<string, number>;
   cartCount: number;
   onAdd: (dishId: string) => void;
+  /** Remove one of a dish from the cart (for the on-row − / + stepper). */
+  onRemove?: (dishId: string) => void;
   onOpenCart: () => void;
   /** Omitted when the kitchen has bulk ordering switched off. */
   onOpenBulk?: () => void;
@@ -64,6 +66,7 @@ export function Storefront({
   cart,
   cartCount,
   onAdd,
+  onRemove,
   onOpenCart,
   onOpenBulk,
   onBack,
@@ -299,6 +302,7 @@ export function Storefront({
                       badge={i === 0 ? 'Most loved' : undefined}
                       quantity={cart[dish.id] ?? 0}
                       onAdd={() => guardedAdd(dish.id)}
+                      onRemove={onRemove ? () => onRemove(dish.id) : undefined}
                     />
                   ))}
                 </ScrollView>
@@ -334,6 +338,7 @@ export function Storefront({
                   favourite={favourites.isFavourite(dish.id)}
                   onToggleFavourite={() => favourites.toggle(dish.id)}
                   onAdd={() => guardedAdd(dish.id)}
+                  onRemove={onRemove ? () => onRemove(dish.id) : undefined}
                 />
               ))}
             </View>
