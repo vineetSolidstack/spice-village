@@ -29,7 +29,7 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
   const { t } = useLanguage();
   const type = useType();
   const insets = useSafeAreaInsets();
-  const { slots, placeOrder, getKitchen, business, backend, dailyStock, loyalty, refreshLoyalty } =
+  const { slots, placeOrder, getKitchen, business, backend, dailyStock, loyalty, refreshLoyalty, refresh } =
     useStore();
   const { user } = useAuth();
   const cart = useCart();
@@ -88,6 +88,8 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
 
   const finishSuccess = () => {
     cart.clear();
+    // Pull the server truth so both sides show the real order (and customer name).
+    if (backend === 'supabase') void refresh();
     showToast(`${t.orderPlaced} 🍛`, 'success');
     navigation.navigate('OrdersTab');
   };
@@ -107,6 +109,7 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
     const result = await placeOrder({
       kitchenSlug: cart.kitchenSlug,
       slotDigits: selected,
+      customerName: user?.name,
       lines: cart.rows.map((r) => ({
         dishId: r.id,
         name: r.name,

@@ -15,6 +15,10 @@ alter table kitchens add column if not exists stamp_goal integer not null defaul
 -- Which items customers may pick as the free reward.
 alter table dishes add column if not exists reward_eligible boolean not null default false;
 
+-- Marks an order that has already earned its one stamp (so paid + picked-up
+-- never double-counts).
+alter table orders add column if not exists stamped boolean not null default false;
+
 -- One loyalty row per customer per kitchen.
 create table if not exists loyalty (
   customer_id uuid not null references profiles on delete cascade,
@@ -35,8 +39,11 @@ create policy "read own or kitchen loyalty" on loyalty
     customer_id = auth.uid() or owns_kitchen(kitchen_id) or is_super_admin()
   );
 
--- --------------------------------------------- earn: 1 stamp per pickup ----
+-- ------------------------------------- earn: 1 stamp per paid / picked-up ---
 
+-- A stamp lands as soon as the order is genuinely earned — paid online, or
+-- marked completed at pickup (covers pay-at-pickup). The `stamped` flag makes
+-- it exactly once. BEFORE UPDATE so we can set the flag on the same row.
 create or replace function grant_stamp()
 returns trigger
 language plpgsql
@@ -46,8 +53,10 @@ as $$
 declare
   v_goal integer;
 begin
-  -- Only when an order first becomes completed (the customer picked it up).
-  if new.status = 'completed' and old.status is distinct from 'completed' then
+  if not new.stamped
+     and (new.payment_state = 'paid' or new.status = 'completed') then
+    new.stamped := true;
+
     select stamp_goal into v_goal from kitchens where id = new.kitchen_id;
     v_goal := coalesce(v_goal, 8);
 
@@ -70,7 +79,7 @@ $$;
 
 drop trigger if exists order_grants_stamp on orders;
 create trigger order_grants_stamp
-  after update on orders
+  before update on orders
   for each row execute function grant_stamp();
 
 -- --------------------------------------------- read: my card ---------------

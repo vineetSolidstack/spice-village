@@ -150,6 +150,8 @@ type StoreValue = {
     kitchenSlug: string;
     slotDigits: string;
     lines: { dishId: string; name: string; quantity: number; price: number }[];
+    /** The signed-in customer's name, for the optimistic row (server has the truth). */
+    customerName?: string;
   }) => Promise<PlacedOrder | null>;
 
   advanceOrder: (ref: string) => void;
@@ -446,7 +448,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const placeOrder = useCallback<StoreValue['placeOrder']>(
-    async ({ kitchenSlug, slotDigits, lines }) => {
+    async ({ kitchenSlug, slotDigits, lines, customerName }) => {
       const slot = slots.find((s) => s.digits === slotDigits);
       const kitchen = kitchens.find((k) => k.slug === kitchenSlug);
       if (!slot || !kitchen) return null;
@@ -484,7 +486,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         slotTime: placed.slotTime,
         kitchenSlug,
         kitchenName: kitchen.name,
-        customerName: 'Priya S.',
+        customerName: customerName?.trim() || 'You',
         lines,
         total,
         status: 'New',
