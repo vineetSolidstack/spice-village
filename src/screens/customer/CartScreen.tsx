@@ -378,7 +378,9 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
           reference={`Order · ${cart.count} items`}
           customerName={user?.name}
           customerEmail={user?.email ?? undefined}
-          customerPhone={business.phone || undefined}
+          // Don't prefill the kitchen's phone — Razorpay must collect each
+          // customer's OWN number so their saved cards/UPI stay theirs.
+          customerPhone={undefined}
           onPaid={() => {
             setPayment(null);
             finishSuccess();
