@@ -575,6 +575,22 @@ export async function fetchLoyalty(kitchenSlug: string): Promise<Loyalty | null>
   }
 }
 
+/** Owner view: how many loyalty cards exist and free combos currently owed. */
+export async function fetchLoyaltyStats(
+  kitchenSlug: string,
+): Promise<{ members: number; rewardsOut: number }> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('loyalty_stats', { p_kitchen_slug: kitchenSlug });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { members: row?.members ?? 0, rewardsOut: row?.rewards_out ?? 0 };
+  } catch (e) {
+    console.warn('[spice-route] loyalty_stats failed', e);
+    return { members: 0, rewardsOut: 0 };
+  }
+}
+
 /** Apply one free-combo reward to a reserved order. Returns ₹ taken off, or 0. */
 export async function redeemRewardToOrder(orderId: string, dishId: string): Promise<number> {
   try {

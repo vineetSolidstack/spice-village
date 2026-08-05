@@ -139,3 +139,21 @@ begin
   return v_disc;
 end;
 $$;
+
+-- --------------------------------------------- owner: loyalty at a glance --
+
+-- Cards on the go and free combos currently owed. Owner / super-admin only;
+-- returns zeros to anyone else (the owns_kitchen guard filters the rows).
+create or replace function loyalty_stats(p_kitchen_slug text)
+returns table (members integer, rewards_out integer)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select count(*)::int, coalesce(sum(l.rewards), 0)::int
+    from loyalty l
+    join kitchens k on k.id = l.kitchen_id
+   where k.slug = p_kitchen_slug
+     and (owns_kitchen(k.id) or is_super_admin());
+$$;
