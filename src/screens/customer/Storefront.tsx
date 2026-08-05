@@ -74,7 +74,12 @@ export function Storefront({
   const insets = useSafeAreaInsets();
   const favourites = useFavourites();
   const { user } = useAuth();
-  const { loading, refresh, business, dailyStock } = useStore();
+  const { loading, refresh, business, dailyStock, slots } = useStore();
+
+  // The first pickup time customers can choose (falls back to the window text).
+  const pickupStart = slots.length
+    ? [...slots].sort((a, b) => a.digits.localeCompare(b.digits))[0].time
+    : pickupWindow;
 
   // Daily service window: open → last call → closed → opens tomorrow.
   const unitsLeft = Math.max(0, dailyStock.capacity - dailyStock.used);
@@ -215,11 +220,7 @@ export function Storefront({
             </Text>
 
             <View style={styles.metaRow}>
-              <Star size={15} color={palette.turmeric500} fill={palette.turmeric500} strokeWidth={2} />
-              <Text style={[type.body(14, 700)]}>{kitchen.rating}</Text>
-              <Text style={[type.body(14, 600), { color: colors.textMuted }]}>
-                {' '}· {kitchen.cuisine}
-              </Text>
+              <Text style={[type.body(14, 700)]}>{kitchen.cuisine}</Text>
             </View>
 
             <View style={styles.metaRow}>
@@ -227,11 +228,11 @@ export function Storefront({
               <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
                 {' '}{kitchen.distance}
               </Text>
-              {pickupWindow ? (
+              {pickupStart ? (
                 <>
                   <Clock size={14} color={colors.textMuted} strokeWidth={2} style={styles.metaGap} />
                   <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
-                    {' '}Pickup {pickupWindow}
+                    {' '}Pickup slots from {pickupStart}
                   </Text>
                 </>
               ) : null}
@@ -307,35 +308,6 @@ export function Storefront({
               </View>
             ) : null}
           </View>
-        </View>
-
-        {/* --------------------------------------------------- sticky tabs */}
-        <View style={styles.tabBar}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabRow}
-          >
-            {sections.map((s) => {
-              const active = s.title === activeSection;
-              return (
-                <Pressable
-                  key={s.title}
-                  onPress={() => jumpTo(s.title)}
-                  style={[styles.tab, active ? styles.tabActive : null]}
-                >
-                  <Text
-                    style={[
-                      type.body(14, active ? 800 : 600),
-                      { color: active ? colors.textOnBrand : colors.textMuted },
-                    ]}
-                  >
-                    {s.title}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
         </View>
 
         {/* ------------------------------------------------------- sections */}

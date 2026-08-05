@@ -360,7 +360,7 @@ export async function saveKitchenDetails(
   patch: {
     name?: string; cuisine?: string; area?: string; pickup_window?: string;
     fssai_number?: string; legal_address?: string; support_email?: string;
-    order_cutoff?: string | null;
+    order_cutoff?: string | null; hero_image_path?: string;
   },
 ): Promise<boolean> {
   try {
