@@ -4,22 +4,35 @@
  * Shows a row of stamp slots (filled as they're earned) toward a free combo,
  * and a celebratory state when a reward is ready to redeem in the cart.
  */
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Check, Gift } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Check, Gift, Maximize2 } from 'lucide-react-native';
 
 import { colors, radius, shadow } from '../theme';
 import { useType } from '../theme/useType';
+import { StampCardModal } from './StampCardModal';
 import type { Loyalty } from '../data/types';
 
 export function LoyaltyCard({ loyalty }: { loyalty: Loyalty }) {
   const type = useType();
+  const [open, setOpen] = useState(false);
   const { stamps, rewards, goal } = loyalty;
   const hasReward = rewards > 0;
   const left = Math.max(0, goal - stamps);
 
   return (
-    <View style={[styles.card, shadow.card, hasReward ? styles.cardReward : null]}>
+    <Pressable
+      onPress={() => setOpen(true)}
+      accessibilityRole="button"
+      accessibilityLabel="Open stamp card"
+      style={({ pressed }) => [
+        styles.card,
+        shadow.card,
+        hasReward ? styles.cardReward : null,
+        pressed ? { opacity: 0.9 } : null,
+      ]}
+    >
+      <StampCardModal open={open} onClose={() => setOpen(false)} loyalty={loyalty} />
       <View style={styles.head}>
         <Gift size={18} color={hasReward ? colors.textOnBrand : colors.textBrand} strokeWidth={2} />
         <Text style={[type.body(14, 800), hasReward ? styles.onBrand : null]}>
@@ -30,6 +43,12 @@ export function LoyaltyCard({ loyalty }: { loyalty: Loyalty }) {
             <Text style={[type.body(11, 800), styles.pillText]}>×{rewards}</Text>
           </View>
         ) : null}
+        <Maximize2
+          size={15}
+          color={hasReward ? 'rgba(255,255,255,0.85)' : colors.textMuted}
+          strokeWidth={2}
+          style={styles.expand}
+        />
       </View>
 
       <View style={styles.stamps}>
@@ -50,7 +69,7 @@ export function LoyaltyCard({ loyalty }: { loyalty: Loyalty }) {
             ? `Order ${goal} times to earn a free combo.`
             : `${left} more ${left === 1 ? 'order' : 'orders'} for a free combo.`}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -69,13 +88,13 @@ const styles = StyleSheet.create({
   onBrandSoft: { color: 'rgba(255,255,255,0.92)' },
   sub: { color: colors.textMuted },
   pill: {
-    marginLeft: 'auto',
     backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   pillText: { color: '#FFFFFF' },
+  expand: { marginLeft: 'auto' },
   stamps: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   slot: {
     width: SLOT,
