@@ -990,6 +990,53 @@ export async function applyCouponToOrder(orderId: string, code: string): Promise
   }
 }
 
+/* ------------------------------------------------------- pickup slots ---- */
+
+/** Add a pickup time for today. Capacity is effectively unlimited at the slot
+ * level now — per-item units gate ordering — so it's set high. */
+export async function addSlotRemote(kitchenSlug: string, time: string): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
+    if (!kitchen) throw new Error('Kitchen not found');
+    const digits = time.replace(/\D/g, '').padEnd(3, '0').slice(0, 4);
+    if (!/^\d{3,4}$/.test(digits)) throw new Error('Bad time');
+    const { error } = await db.from('pickup_slots').insert({
+      kitchen_id: (kitchen as { id: string }).id,
+      time_label: time,
+      digits,
+      capacity: 9999,
+      used: 0,
+    });
+    // A duplicate (same time already exists today) is fine.
+    if (error && error.code !== '23505') throw error;
+    return true;
+  } catch (e) {
+    console.warn('[spice-route] addSlotRemote failed', e);
+    return false;
+  }
+}
+
+/** Remove today's pickup time. Fails (returns false) if orders already use it. */
+export async function removeSlotRemote(kitchenSlug: string, digits: string): Promise<boolean> {
+  try {
+    const db = requireSupabase();
+    const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
+    if (!kitchen) throw new Error('Kitchen not found');
+    const { error } = await db
+      .from('pickup_slots')
+      .delete()
+      .eq('kitchen_id', (kitchen as { id: string }).id)
+      .eq('digits', digits)
+      .eq('service_date', new Date().toISOString().slice(0, 10));
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.warn('[spice-route] removeSlotRemote failed', e);
+    return false;
+  }
+}
+
 /* ---------------------------------------------------------- daily stock -- */
 
 export type DailyStock = { capacity: number; used: number };

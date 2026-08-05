@@ -158,6 +158,8 @@ type StoreValue = {
 
   setSlotCapacity: (digits: string, capacity: number) => void;
   addSlot: (time: string) => void;
+  /** Remove a pickup time (fails silently if orders already use it). */
+  removeSlot: (digits: string) => void;
 
   setDishAvailability: (kitchenSlug: string, dishId: string, available: boolean) => void;
   /** Take a dish out of the customer app entirely (or put it back). */
@@ -549,12 +551,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addSlot = useCallback((time: string) => {
-    setSlots((current) => {
-      const digits = time.replace(/\D/g, '').padEnd(3, '0');
-      if (current.some((s) => s.digits === digits)) return current;
-      return [...current, { digits, time, capacity: 12, used: 0 }];
-    });
-  }, []);
+    const digits = time.replace(/\D/g, '').padEnd(3, '0');
+    setSlots((current) =>
+      current.some((s) => s.digits === digits)
+        ? current
+        : [...current, { digits, time, capacity: 9999, used: 0 }],
+    );
+    if (isSupabaseConfigured) {
+      void fetchApi.addSlotRemote(showcaseSlug, time).then((ok) => {
+        if (ok) void refresh();
+      });
+    }
+  }, [showcaseSlug, refresh]);
+
+  const removeSlot = useCallback((digits: string) => {
+    setSlots((current) => current.filter((s) => s.digits !== digits));
+    if (isSupabaseConfigured) {
+      void fetchApi.removeSlotRemote(showcaseSlug, digits).then((ok) => {
+        // If the server kept it (e.g. orders already use it), re-sync the truth.
+        if (!ok) void refresh();
+      });
+    }
+  }, [showcaseSlug, refresh]);
 
   // After an item is switched on/off or taken out, the day's total changes
   // (it only counts available, visible items). Re-pull just today's total.
@@ -857,6 +875,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       verifySlotCode,
       setSlotCapacity,
       addSlot,
+      removeSlot,
       setDishAvailability,
       setDishHidden,
       moveDish,
@@ -902,6 +921,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       verifySlotCode,
       setSlotCapacity,
       addSlot,
+      removeSlot,
       setDishAvailability,
       setDishHidden,
       moveDish,

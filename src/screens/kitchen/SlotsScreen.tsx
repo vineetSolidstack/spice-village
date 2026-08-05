@@ -8,11 +8,12 @@
  */
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Plus } from 'lucide-react-native';
+import { Plus, Trash2 } from 'lucide-react-native';
 
 import {
   Button,
   Dialog,
+  IconButton,
   InfoBanner,
   Input,
   PortalHeader,
@@ -27,10 +28,11 @@ import type { Slot } from '../../data/types';
 
 export function KitchenSlotsScreen() {
   const type = useType();
-  const { slots, addSlot, dailyStock } = useStore();
+  const { slots, addSlot, removeSlot, dailyStock } = useStore();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
   const [time, setTime] = useState('');
+  const [confirming, setConfirming] = useState<Slot | null>(null);
 
   const left = Math.max(0, dailyStock.capacity - dailyStock.used);
 
@@ -91,7 +93,7 @@ export function KitchenSlotsScreen() {
         </View>
 
         {slots.map((slot) => (
-          <TimeRow key={slot.digits} slot={slot} left={left} />
+          <TimeRow key={slot.digits} slot={slot} left={left} onRemove={() => setConfirming(slot)} />
         ))}
       </View>
 
@@ -118,12 +120,43 @@ export function KitchenSlotsScreen() {
           onChangeText={setTime}
         />
       </Dialog>
+
+      <Dialog
+        open={confirming !== null}
+        onClose={() => setConfirming(null)}
+        title="Remove pickup time?"
+        footer={
+          <>
+            <Button variant="ghost" onPress={() => setConfirming(null)}>
+              Keep
+            </Button>
+            <Button
+              variant="danger"
+              onPress={() => {
+                if (confirming) {
+                  removeSlot(confirming.digits);
+                  showToast(`${confirming.time} removed`, 'info');
+                }
+                setConfirming(null);
+              }}
+            >
+              Remove
+            </Button>
+          </>
+        }
+      >
+        <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
+          {confirming
+            ? `Customers won’t be able to pick ${confirming.time} anymore. Orders already placed for it aren’t affected — and if any exist, it can’t be removed.`
+            : ''}
+        </Text>
+      </Dialog>
     </Screen>
   );
 }
 
 /** A pickup time. Remaining is the shared pool, identical across every row. */
-function TimeRow({ slot, left }: { slot: Slot; left: number }) {
+function TimeRow({ slot, left, onRemove }: { slot: Slot; left: number; onRemove: () => void }) {
   const type = useType();
   const countColour = left === 0 ? colors.statusDanger : left <= 5 ? colors.statusWarn : colors.textMuted;
 
@@ -136,6 +169,9 @@ function TimeRow({ slot, left }: { slot: Slot; left: number }) {
           {left === 0 ? 'Sold out' : `${left} units left`}
         </Text>
       </View>
+      <IconButton label={`Remove ${slot.time}`} size={34} onPress={onRemove}>
+        <Trash2 size={16} color={colors.statusDanger} strokeWidth={2} />
+      </IconButton>
     </View>
   );
 }
