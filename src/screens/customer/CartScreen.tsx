@@ -164,6 +164,9 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
     const orderId = payment?.orderId;
     setPayment(null);
     if (orderId) await releaseUnpaidOrder(orderId);
+    // The reservation is freed server-side; re-sync so the units we optimistically
+    // took come back, and the unpaid order never lingers.
+    if (backend === 'supabase') void refresh();
     showToast(reason, 'danger');
   };
 

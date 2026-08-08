@@ -54,6 +54,7 @@ import { slotCode } from '../lib/slotCode';
 import * as remote from './remote';
 import * as fetchApi from './fetch';
 import { isSupabaseConfigured } from './supabase';
+import { paymentsEnabled } from '../lib/pay';
 
 export type PlacedOrder = { orderId: string | null; ref: string; slotCode: string; slotTime: string; itemCount: number };
 
@@ -366,7 +367,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const results = await Promise.allSettled([
       fetchApi.fetchKitchens(),
       fetchApi.fetchWorkshops(),
-      fetchApi.fetchOrders(),
+      fetchApi.fetchOrders(paymentsEnabled),
       fetchApi.fetchBulkRequests(),
       fetchApi.fetchPlatformSettings(),
     ]);
@@ -513,8 +514,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             : { ...k, combos: k.combos.map(drawDown), menu: k.menu.map(drawDown) },
         ),
       );
-      setCustomerOrders((current) => [order, ...current]);
-      setKitchenOrders((current) => [order, ...current]);
+
+      // Only show the order right away when there's nothing to pay (pay at
+      // pickup). With online payments it must NOT appear until it's actually
+      // paid — the paid order arrives via refresh() after verification, so a
+      // failed/abandoned payment never shows as a real order.
+      if (!paymentsEnabled) {
+        setCustomerOrders((current) => [order, ...current]);
+        setKitchenOrders((current) => [order, ...current]);
+      }
 
       return placed;
     },
