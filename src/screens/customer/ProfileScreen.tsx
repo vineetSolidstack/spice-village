@@ -46,7 +46,7 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
   const { t, language, setLanguage } = useLanguage();
   const type = useType();
   const { setRole, roles, user, signOut, demo, refreshRoles } = useAuth();
-  const { bookings, refresh, loyalty } = useStore();
+  const { bookings, refresh, loyalty, loyaltyLoading, refreshLoyalty } = useStore();
   const { showToast } = useToast();
   const [switching, setSwitching] = useState(false);
   const [showBookings, setShowBookings] = useState(false);
@@ -77,6 +77,12 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
   useEffect(() => {
     void reloadApplication();
   }, [reloadApplication]);
+
+  // Pull the stamp card as soon as Profile opens / the account changes, so it
+  // loads fast instead of waiting for the next full catalogue refresh.
+  useEffect(() => {
+    if (!demo && user?.id) refreshLoyalty();
+  }, [demo, user?.id, refreshLoyalty]);
 
   const onApply = async () => {
     if (!appKitchen.trim() || !appName.trim() || appBusy) return;
@@ -222,7 +228,7 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
           </View>
         </View>
 
-        {!demo ? <LoyaltyCard loyalty={loyalty} /> : null}
+        {!demo ? <LoyaltyCard loyalty={loyalty} loading={loyaltyLoading} /> : null}
 
         <View style={[styles.rows, shadow.card]}>
           {rows.map((row, i) => (

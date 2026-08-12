@@ -141,6 +141,8 @@ type StoreValue = {
 
   /** The signed-in customer's stamp card for the showcase kitchen. */
   loyalty: Loyalty;
+  /** True until the card has loaded once — show a "loading" state, not "0 of 8". */
+  loyaltyLoading: boolean;
   /** Re-read the loyalty card (e.g. after an order or a redemption). */
   refreshLoyalty: () => void;
 
@@ -229,6 +231,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // kitchen created through the application flow gets a suffixed slug).
   const [showcaseSlug, setShowcaseSlug] = useState<string>(SHOWCASE_KITCHEN_SLUG);
   const [loyalty, setLoyalty] = useState<Loyalty>({ stamps: 0, rewards: 0, goal: 8 });
+  // True until the card has loaded at least once, so the UI can show "loading"
+  // rather than a scary empty "0 of 8" that reads like the stamps were wiped.
+  const [loyaltyLoading, setLoyaltyLoading] = useState(isSupabaseConfigured);
   // Today's total units (sum across items). Empty until the owner sets item units.
   const [dailyStock, setDailyStock] = useState<{ capacity: number; used: number }>(
     seed({ capacity: 50, used: 0 }, { capacity: 0, used: 0 }),
@@ -385,6 +390,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // The signed-in customer's stamp card for this kitchen.
       void fetchApi.fetchLoyalty(showcase).then((l) => {
         if (l) setLoyalty(l);
+        setLoyaltyLoading(false);
       });
 
       // Merge today's per-item remaining units into the showcase kitchen's menu,
@@ -595,8 +601,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const refreshLoyalty = useCallback(() => {
     if (!isSupabaseConfigured) return;
+    setLoyaltyLoading(true);
     void fetchApi.fetchLoyalty(showcaseSlug).then((l) => {
       if (l) setLoyalty(l);
+      setLoyaltyLoading(false);
     });
   }, [showcaseSlug]);
 
@@ -878,6 +886,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       acceptingOrders,
       setAcceptingOrders,
       loyalty,
+      loyaltyLoading,
       refreshLoyalty,
       getKitchen,
       placeOrder,
@@ -924,6 +933,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       users,
       acceptingOrders,
       loyalty,
+      loyaltyLoading,
       refreshLoyalty,
       getKitchen,
       placeOrder,

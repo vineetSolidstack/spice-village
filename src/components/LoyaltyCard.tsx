@@ -5,7 +5,7 @@
  * and a celebratory state when a reward is ready to redeem in the cart.
  */
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check, Gift, Maximize2 } from 'lucide-react-native';
 
 import { colors, radius, shadow } from '../theme';
@@ -13,12 +13,24 @@ import { useType } from '../theme/useType';
 import { StampCardModal } from './StampCardModal';
 import type { Loyalty } from '../data/types';
 
-export function LoyaltyCard({ loyalty }: { loyalty: Loyalty }) {
+export function LoyaltyCard({ loyalty, loading }: { loyalty: Loyalty; loading?: boolean }) {
   const type = useType();
   const [open, setOpen] = useState(false);
   const { stamps, rewards, goal } = loyalty;
   const hasReward = rewards > 0;
   const left = Math.max(0, goal - stamps);
+  // Only treat it as "loading" when we genuinely have nothing to show yet, so a
+  // returning customer with stamps never sees a flash of empty card.
+  const showLoading = loading && stamps === 0 && rewards === 0;
+
+  if (showLoading) {
+    return (
+      <View style={[styles.card, shadow.card, styles.loadingCard]}>
+        <ActivityIndicator color={colors.textBrand} />
+        <Text style={[type.body(13, 700), { color: colors.textMuted }]}>Loading your stamp card…</Text>
+      </View>
+    );
+  }
 
   return (
     <Pressable
@@ -83,6 +95,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardReward: { backgroundColor: colors.actionPrimary },
+  loadingCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   onBrand: { color: colors.textOnBrand },
   onBrandSoft: { color: 'rgba(255,255,255,0.92)' },
