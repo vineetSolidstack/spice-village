@@ -20,13 +20,11 @@ export const RAZORPAY_KEY_ID =
   (Constants.expoConfig?.extra as { razorpayKeyId?: string } | undefined)?.razorpayKeyId ??
   '';
 
-/**
- * True when online payment is available. The in-app Razorpay checkout runs in a
- * native WebView, which the web build doesn't have — so on web we fall back to
- * pay-at-pickup for now (web card/UPI checkout is a later addition).
- */
-export const paymentsEnabled =
-  Boolean(RAZORPAY_KEY_ID) && isSupabaseConfigured && Platform.OS !== 'web';
+/** True when online payment is available (native WebView or web checkout.js). */
+export const paymentsEnabled = Boolean(RAZORPAY_KEY_ID) && isSupabaseConfigured;
+
+/** Whether we're running as a web page (uses Razorpay's checkout.js directly). */
+export const isWebPlatform = Platform.OS === 'web';
 
 export type RazorpayOrder = {
   razorpayOrderId: string;
@@ -66,6 +64,68 @@ export async function verifyPayment(input: {
   } catch (e) {
     console.warn('[spice-route] verifyPayment failed', e);
     return false;
+  }
+}
+
+/* ---------------------------------------------------- web checkout ------- */
+
+// Load Razorpay's checkout.js once (web only).
+let checkoutJs: Promise<void> | null = null;
+function loadCheckoutJs(): Promise<void> {
+  if (checkoutJs) return checkoutJs;
+  const g = globalThis as unknown as { Razorpay?: unknown; document?: Document };
+  checkoutJs = new Promise((resolve, reject) => {
+    if (!g.document) return reject(new Error('No document'));
+    if (g.Razorpay) return resolve();
+    const s = g.document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Failed to load Razorpay'));
+    g.document.head.appendChild(s);
+  });
+  return checkoutJs;
+}
+
+export type WebCheckoutResult = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+/**
+ * Open Razorpay Checkout in the browser (web only). Calls back with the signed
+ * result on success — the caller then verifies it server-side, same as native.
+ */
+export async function openRazorpayWebCheckout(opts: {
+  razorpay: RazorpayOrder;
+  kitchenName: string;
+  reference: string;
+  name?: string;
+  email?: string;
+  contact?: string;
+  onSuccess: (r: WebCheckoutResult) => void;
+  onDismiss: () => void;
+  onError: (message: string) => void;
+}): Promise<void> {
+  try {
+    await loadCheckoutJs();
+    const Razorpay = (globalThis as unknown as { Razorpay: new (o: unknown) => { open: () => void; on: (e: string, cb: (r: { error?: { description?: string } }) => void) => void } }).Razorpay;
+    const rzp = new Razorpay({
+      key: opts.razorpay.keyId,
+      order_id: opts.razorpay.razorpayOrderId,
+      amount: opts.razorpay.amount,
+      currency: opts.razorpay.currency,
+      name: opts.kitchenName,
+      description: opts.reference,
+      prefill: { name: opts.name ?? '', email: opts.email ?? '', contact: opts.contact ?? '' },
+      theme: { color: '#C1440E' },
+      handler: (r: WebCheckoutResult) => opts.onSuccess(r),
+      modal: { ondismiss: () => opts.onDismiss() },
+    });
+    rzp.on('payment.failed', (resp) => opts.onError(resp?.error?.description ?? 'Payment failed'));
+    rzp.open();
+  } catch (e) {
+    opts.onError(String(e));
   }
 }
 

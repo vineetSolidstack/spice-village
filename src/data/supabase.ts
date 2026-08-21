@@ -8,6 +8,7 @@
  * a code change.
  */
 import 'react-native-url-polyfill/auto';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
@@ -17,14 +18,18 @@ const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 /** True when real credentials are configured. */
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
+const isWeb = Platform.OS === 'web';
+
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(url!, anonKey!, {
       auth: {
-        storage: AsyncStorage,
+        // On web the browser keeps the session; native uses AsyncStorage.
+        storage: isWeb ? undefined : AsyncStorage,
         autoRefreshToken: true,
         persistSession: true,
-        // React Native has no URL to parse a session out of.
-        detectSessionInUrl: false,
+        // Web returns from Google OAuth with a code in the URL to exchange;
+        // native has no URL to parse and exchanges the code by hand.
+        detectSessionInUrl: isWeb,
       },
     })
   : null;

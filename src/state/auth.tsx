@@ -11,6 +11,7 @@
  * without a backend.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import * as WebBrowser from 'expo-web-browser';
@@ -188,6 +189,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = useCallback<AuthValue['signInWithGoogle']>(async () => {
     if (!supabase) return { error: 'Supabase is not configured' };
     try {
+      // On the web the whole page redirects to Google and back to the site; the
+      // client (detectSessionInUrl) exchanges the returned code automatically.
+      if (Platform.OS === 'web') {
+        const origin = (globalThis as unknown as { location?: { origin: string } }).location?.origin;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: origin },
+        });
+        return { error: error?.message ?? null };
+      }
+
       // The browser tab returns to the app at this deep link.
       const redirectTo = makeRedirectUri({ scheme: 'spiceroute', path: 'auth-callback' });
 

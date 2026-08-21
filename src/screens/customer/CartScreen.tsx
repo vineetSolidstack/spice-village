@@ -19,7 +19,15 @@ import { useCart } from '../../state/cart';
 import { useAuth } from '../../state/auth';
 import { money } from '../../lib/format';
 import { useServiceWindow, LAST_CALL_MIN_ITEMS } from '../../lib/serviceWindow';
-import { paymentsEnabled, createRazorpayOrder, releaseUnpaidOrder, type RazorpayOrder } from '../../lib/pay';
+import {
+  paymentsEnabled,
+  isWebPlatform,
+  createRazorpayOrder,
+  releaseUnpaidOrder,
+  openRazorpayWebCheckout,
+  verifyPayment,
+  type RazorpayOrder,
+} from '../../lib/pay';
 import { applyCouponToOrder, previewCoupon, redeemRewardToOrder } from '../../data/fetch';
 import { PaymentScreen } from './PaymentScreen';
 import type { Slot } from '../../data/types';
@@ -157,7 +165,41 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
       showToast('Could not start payment. Please try again.', 'danger');
       return;
     }
+
+    // Web: open Razorpay Checkout in the browser (no native WebView) and verify
+    // the same way. Native: hand off to the in-app PaymentScreen WebView.
+    if (isWebPlatform) {
+      const orderId = result.orderId;
+      void openRazorpayWebCheckout({
+        razorpay,
+        kitchenName: kitchen?.name ?? business.kitchenName,
+        reference: `Order · ${cart.count} items`,
+        name: user?.name,
+        email: user?.email ?? undefined,
+        onSuccess: async (r) => {
+          const ok = await verifyPayment({
+            orderId,
+            razorpayOrderId: r.razorpay_order_id,
+            razorpayPaymentId: r.razorpay_payment_id,
+            razorpaySignature: r.razorpay_signature,
+          });
+          if (ok) finishSuccess();
+          else void onPaymentCancelled('We could not confirm that payment. If money was deducted, it will be refunded.');
+        },
+        onDismiss: () => void onPaymentCancelledFor(orderId, 'Payment cancelled'),
+        onError: (msg) => void onPaymentCancelledFor(orderId, msg),
+      });
+      return;
+    }
+
     setPayment({ orderId: result.orderId, razorpay });
+  };
+
+  // Release a specific order (used by the web checkout, which has no `payment` state).
+  const onPaymentCancelledFor = async (orderId: string, reason: string) => {
+    await releaseUnpaidOrder(orderId);
+    if (backend === 'supabase') void refresh();
+    showToast(reason, 'danger');
   };
 
   const onPaymentCancelled = async (reason: string) => {
