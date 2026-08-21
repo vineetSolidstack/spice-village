@@ -9,6 +9,7 @@
  * Online payment turns on when a publishable Razorpay key is configured;
  * otherwise checkout stays pay-at-pickup and this module is dormant.
  */
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 import { supabase, isSupabaseConfigured } from '../data/supabase';
@@ -19,8 +20,13 @@ export const RAZORPAY_KEY_ID =
   (Constants.expoConfig?.extra as { razorpayKeyId?: string } | undefined)?.razorpayKeyId ??
   '';
 
-/** True when online payment is available. */
-export const paymentsEnabled = Boolean(RAZORPAY_KEY_ID) && isSupabaseConfigured;
+/**
+ * True when online payment is available. The in-app Razorpay checkout runs in a
+ * native WebView, which the web build doesn't have — so on web we fall back to
+ * pay-at-pickup for now (web card/UPI checkout is a later addition).
+ */
+export const paymentsEnabled =
+  Boolean(RAZORPAY_KEY_ID) && isSupabaseConfigured && Platform.OS !== 'web';
 
 export type RazorpayOrder = {
   razorpayOrderId: string;

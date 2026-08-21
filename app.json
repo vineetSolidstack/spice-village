@@ -40,7 +40,13 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Nandhan Delight",
+      "shortName": "Nandhan",
+      "themeColor": "#C1440E",
+      "backgroundColor": "#C1440E",
+      "display": "standalone",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-font",
