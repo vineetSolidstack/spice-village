@@ -77,6 +77,12 @@ const banner = `
         var hint = document.getElementById('ndHint');
         var deferred = null;
         var KEY = 'nd_pwa_dismissed';
+        var ua = navigator.userAgent || '';
+        // iOS has no install prompt. Samsung phones/Internet block the WebAPK
+        // install (Auto Blocker), so we steer them to the shortcut instead.
+        var isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+        var isSamsung = /samsungbrowser/i.test(ua) || /\\bSM-\\w|samsung/i.test(ua);
+
         function standalone() {
           return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
         }
@@ -87,13 +93,23 @@ const banner = `
         function hide() { el.classList.remove('show'); }
         function snooze() { try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {} }
 
+        // Show the native install button (only where the WebAPK install works).
+        function showInstall() {
+          go.style.display = '';
+          hint.textContent = 'Add to your home screen for faster ordering.';
+          show();
+        }
+        // Show a "do it from the menu" hint (works everywhere, never blocked).
+        function showHint(text) {
+          go.style.display = 'none';
+          hint.textContent = text;
+          show();
+        }
+
         if (standalone() || snoozed()) return;
 
-        window.addEventListener('beforeinstallprompt', function (e) {
-          e.preventDefault();
-          deferred = e;
-          show();
-        });
+        x.addEventListener('click', function () { hide(); snooze(); });
+        window.addEventListener('appinstalled', function () { hide(); snooze(); });
         go.addEventListener('click', function () {
           if (!deferred) return;
           deferred.prompt();
@@ -101,16 +117,25 @@ const banner = `
             deferred = null; hide();
           });
         });
-        x.addEventListener('click', function () { hide(); snooze(); });
-        window.addEventListener('appinstalled', function () { hide(); snooze(); });
 
-        // iOS Safari has no beforeinstallprompt — show a Share-sheet hint instead.
-        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-        if (isIOS && !standalone() && !snoozed()) {
-          go.style.display = 'none';
-          hint.textContent = 'Tap the Share icon, then "Add to Home Screen".';
-          setTimeout(show, 2500);
+        if (isIOS) {
+          // iPhone: Share sheet → Add to Home Screen.
+          setTimeout(function () { showHint('Tap the Share icon (□↑), then "Add to Home Screen".'); }, 2200);
+          return;
         }
+
+        if (isSamsung) {
+          // Samsung: the app install is blocked, but a home-screen shortcut isn't.
+          setTimeout(function () { showHint('Open the browser menu, then tap "Add page to" → "Home screen".'); }, 2200);
+          return;
+        }
+
+        // Chrome / other Chromium: use the real install prompt when the browser offers it.
+        window.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          deferred = e;
+          showInstall();
+        });
       })();
     </script>`;
 
