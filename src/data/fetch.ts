@@ -208,10 +208,11 @@ const ORDER_SELECT =
  * Orders visible to the caller. RLS already scopes this: customers see their
  * own, owners see their kitchen's.
  *
- * When online payments are on, `paidOnly` hides orders that aren't actually
- * paid — reserved-but-unpaid, mid-payment (pending), and failed — so a failed
- * payment never appears as a real order in either app. Cancelled orders are
- * always hidden.
+ * When online payments are on, `paidOnly` hides orders that are mid-payment
+ * (pending) or failed — so an abandoned/failed online payment never shows as a
+ * real order. It still shows PAID orders and genuine pay-at-pickup ('unpaid')
+ * orders (e.g. from the web build, which has no in-app checkout). Cancelled
+ * orders are always hidden.
  */
 export async function fetchOrders(paidOnly = false): Promise<Order[]> {
   const db = requireSupabase();
@@ -221,7 +222,7 @@ export async function fetchOrders(paidOnly = false): Promise<Order[]> {
     .neq('status', 'cancelled')
     .order('placed_at', { ascending: false })
     .limit(100);
-  if (paidOnly) query = query.eq('payment_state', 'paid');
+  if (paidOnly) query = query.not('payment_state', 'in', '(pending,failed)');
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((o) => toOrder(o as unknown as OrderRow));
