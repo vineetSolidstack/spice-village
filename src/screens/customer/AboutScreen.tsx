@@ -42,17 +42,6 @@ export function AboutScreen({ navigation }: ProfileStackScreen<'About'>) {
             <MapPin size={15} color={colors.textMuted} strokeWidth={2} />
             <Text style={[type.body(13, 600), styles.infoText]}>{business.legalAddress}</Text>
           </View>
-          {business.mapUrl ? (
-            <View style={styles.infoRow}>
-              <MapPin size={15} color={colors.textBrand} strokeWidth={2} />
-              <Text
-                style={[type.body(13, 700), styles.infoText, styles.link, { color: colors.textBrand }]}
-                onPress={() => Linking.openURL(business.mapUrl)}
-              >
-                View on map
-              </Text>
-            </View>
-          ) : null}
           {business.supportEmail ? (
             <View style={styles.infoRow}>
               <Mail size={15} color={colors.textMuted} strokeWidth={2} />

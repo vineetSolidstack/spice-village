@@ -69,7 +69,6 @@ export function KitchenSettingsScreen() {
   const [cuisine, setCuisine] = useState(business.cuisine);
   const [pickupWindow, setPickupWindow] = useState(business.pickupWindow);
   const [cutoff, setCutoff] = useState(business.orderCutoff);
-  const [mapUrl, setMapUrl] = useState(business.mapUrl);
   const [showCoupons, setShowCoupons] = useState(false);
   const [showReports, setShowReports] = useState(false);
 
@@ -78,7 +77,6 @@ export function KitchenSettingsScreen() {
     setCuisine(business.cuisine);
     setPickupWindow(business.pickupWindow);
     setCutoff(business.orderCutoff);
-    setMapUrl(business.mapUrl);
   }, [business]);
 
   // Accept "7pm" / "19:00" / "7:30 pm" and normalise to 24h "HH:MM".
@@ -103,7 +101,6 @@ export function KitchenSettingsScreen() {
       cuisine,
       pickupWindow: pickupWindow.trim(),
       orderCutoff: normaliseCutoff(cutoff),
-      mapUrl: mapUrl.trim(),
     });
     showToast('Kitchen profile saved', 'info');
   };
@@ -169,15 +166,6 @@ export function KitchenSettingsScreen() {
           onChangeText={setCutoff}
           placeholder="7pm"
           hint="After this time today’s pre-orders close and reopen tomorrow. Leave blank for no cutoff."
-        />
-
-        <Input
-          label="Location map link"
-          value={mapUrl}
-          onChangeText={setMapUrl}
-          placeholder="https://maps.app.goo.gl/…"
-          autoCapitalize="none"
-          hint="Paste your Google Maps share link. Customers tap “View on map” to find you."
         />
 
         <Button disabled={!name.trim()} onPress={onSave}>Save changes</Button>
