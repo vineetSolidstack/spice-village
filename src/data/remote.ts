@@ -14,12 +14,6 @@ import type { BulkRequest, BulkStatus, PaymentMode } from './types';
 
 export type RemoteOrder = { orderId: string; ref: string; slotCode: string; slotTime: string; itemCount: number };
 
-/** Checkout failed — carries the reason so the UI can show something useful. */
-export type PlaceOrderError = { error: string };
-export function isPlaceOrderError(v: unknown): v is PlaceOrderError {
-  return typeof v === 'object' && v !== null && 'error' in v;
-}
-
 /** Map the app's title-case bulk status onto the `bulk_status` enum. */
 const BULK_STATUS_DB: Record<BulkStatus, string> = {
   'Pending quote': 'pending_quote',
@@ -35,7 +29,7 @@ export async function placeOrder(input: {
   kitchenSlug: string;
   slotDigits: string;
   lines: { dishId: string; quantity: number }[];
-}): Promise<RemoteOrder | PlaceOrderError> {
+}): Promise<RemoteOrder | null> {
   try {
     const db = requireSupabase();
 
@@ -46,17 +40,14 @@ export async function placeOrder(input: {
       .single();
     if (kitchenError || !kitchen) throw kitchenError ?? new Error('Kitchen not found');
 
-    // Make sure today's slot row exists (slots are persistent templates now),
-    // then resolve it. maybeSingle avoids a throw when it's momentarily absent.
-    await db.rpc('ensure_todays_slots', { p_kitchen_id: kitchen.id });
     const { data: slot, error: slotError } = await db
       .from('pickup_slots')
       .select('id')
       .eq('kitchen_id', kitchen.id)
       .eq('digits', input.slotDigits)
       .eq('service_date', new Date().toISOString().slice(0, 10))
-      .maybeSingle();
-    if (slotError || !slot) throw slotError ?? new Error('Pickup time not found');
+      .single();
+    if (slotError || !slot) throw slotError ?? new Error('Slot not found');
 
     const { data, error } = await db.rpc('place_order', {
       p_kitchen_id: kitchen.id,
@@ -66,7 +57,7 @@ export async function placeOrder(input: {
     if (error) throw error;
 
     const row = Array.isArray(data) ? data[0] : data;
-    if (!row) return { error: 'The kitchen didn’t confirm the order. Please try again.' };
+    if (!row) return null;
 
     return {
       orderId: row.order_id,
@@ -77,10 +68,7 @@ export async function placeOrder(input: {
     };
   } catch (error) {
     console.warn('[spice-route] place_order failed', error);
-    const msg =
-      (error as { message?: string })?.message ??
-      (typeof error === 'string' ? error : 'Could not place the order.');
-    return { error: msg };
+    return null;
   }
 }
 

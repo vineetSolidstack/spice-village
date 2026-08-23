@@ -52,7 +52,6 @@ import type {
 import { NEXT_STATUS } from './types';
 import { slotCode } from '../lib/slotCode';
 import * as remote from './remote';
-import type { PlaceOrderError } from './remote';
 import * as fetchApi from './fetch';
 import { isSupabaseConfigured } from './supabase';
 import { paymentsEnabled } from '../lib/pay';
@@ -158,7 +157,7 @@ type StoreValue = {
     lines: { dishId: string; name: string; quantity: number; price: number }[];
     /** The signed-in customer's name, for the optimistic row (server has the truth). */
     customerName?: string;
-  }) => Promise<PlacedOrder | PlaceOrderError | null>;
+  }) => Promise<PlacedOrder | null>;
 
   advanceOrder: (ref: string) => void;
   /** Resolve a scanned QR payload (which is the slot code) to an order. */
@@ -477,9 +476,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (isSupabaseConfigured) {
         const result = await remote.placeOrder({ kitchenSlug, slotDigits, lines });
-        // The server rejected it — surface the real reason rather than faking a
-        // local order or hiding it behind a generic "slot filled up".
-        if (remote.isPlaceOrderError(result)) return result;
+        // The server rejected it — most likely the slot filled between render
+        // and submit. Surface the failure rather than faking a local order.
+        if (!result) return null;
         placed = { ...result, orderId: result.orderId };
       } else {
         const sequence = slot.used + 1;

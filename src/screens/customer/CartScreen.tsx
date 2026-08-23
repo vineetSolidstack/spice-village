@@ -126,9 +126,10 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
       })),
     });
 
-    if (!result || 'error' in result) {
+    if (!result) {
       setPlacing(false);
-      showToast(result?.error ?? 'That slot just filled up. Pick another?', 'danger');
+      showToast('That slot just filled up. Pick another?', 'danger');
+      setSelected(null);
       return;
     }
 
