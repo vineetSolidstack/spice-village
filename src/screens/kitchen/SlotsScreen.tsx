@@ -81,7 +81,12 @@ export function KitchenSlotsScreen() {
 
         {/* -------------------------------------------- pickup times */}
         <View style={styles.timesHead}>
-          <Text style={type.display(18, 700)}>Pickup times</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={type.display(18, 700)}>Pickup times</Text>
+            <Text style={[type.body(12, 600), { color: colors.textMuted, marginTop: 2 }]}>
+              Set these once — they repeat every day until you remove them.
+            </Text>
+          </View>
           <Button
             size="sm"
             variant="secondary"
@@ -147,7 +152,7 @@ export function KitchenSlotsScreen() {
       >
         <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
           {confirming
-            ? `Customers won’t be able to pick ${confirming.time} anymore. Orders already placed for it aren’t affected — and if any exist, it can’t be removed.`
+            ? `Customers won’t be able to pick ${confirming.time} anymore, today or on any future day. Orders already placed for it today aren’t affected.`
             : ''}
         </Text>
       </Dialog>
