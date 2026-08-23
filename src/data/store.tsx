@@ -94,6 +94,8 @@ export type Business = {
   /** Daily pre-order cutoff, 24h "HH:MM" (e.g. "19:00"). After it, today's
    * ordering closes and the app opens again tomorrow. Empty = no cutoff. */
   orderCutoff: string;
+  /** Maps link (Google Maps share URL) customers tap to see the location. */
+  mapUrl: string;
 };
 
 const BUSINESS_KEY = 'spiceroute.business';
@@ -291,6 +293,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       'No. 606/1, Palaniyappa Nagar, Rakkiyapalayam Road, Ammapalayam, Avinashi block, Tirupur, Tamil Nadu 641652',
     supportEmail: 'vineetkrsnaprashad@gmail.com',
     orderCutoff: '19:00',
+    mapUrl: '',
   });
 
   useEffect(() => {
@@ -328,6 +331,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           legal_address: next.legalAddress,
           support_email: next.supportEmail,
           order_cutoff: next.orderCutoff ? next.orderCutoff : null,
+          map_url: next.mapUrl ? next.mapUrl : null,
         });
       }
 
@@ -418,6 +422,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           cuisine: shown.cuisine,
           area: shown.distance,
           ...(shown.orderCutoff ? { orderCutoff: shown.orderCutoff } : {}),
+          ...(shown.mapUrl ? { mapUrl: shown.mapUrl } : {}),
         }));
       }
       const slots = await fetchApi.fetchSlots(showcase).catch(() => []);
