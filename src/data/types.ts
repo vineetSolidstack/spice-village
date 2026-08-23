@@ -48,6 +48,8 @@ export type Kitchen = {
   menu: Dish[];
   /** Daily pre-order cutoff "HH:MM" (24h); after it, today closes. */
   orderCutoff?: string | null;
+  /** A maps link (e.g. Google Maps share URL) customers tap to see the location. */
+  mapUrl?: string | null;
   /** When false the bulk-quote feature is hidden from customers entirely. */
   bulkEnabled?: boolean;
   bulkMinUnits?: number;

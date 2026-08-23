@@ -11,6 +11,7 @@
  */
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -238,6 +239,18 @@ export function Storefront({
               ) : null}
             </View>
 
+            {kitchen.mapUrl ? (
+              <Pressable
+                onPress={() => { void Linking.openURL(kitchen.mapUrl as string); }}
+                style={styles.mapRow}
+              >
+                <MapPin size={16} color={colors.textBrand} strokeWidth={2.2} />
+                <Text style={[type.body(13, 700), { color: colors.textBrand }]}>
+                  {' '}View on map
+                </Text>
+              </Pressable>
+            ) : null}
+
             {saving > 0 ? (
               <View style={styles.savePill}>
                 <Text style={[type.body(13, 700), { color: colors.statusSuccess }]}>
@@ -395,6 +408,7 @@ const styles = StyleSheet.create({
   },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   metaGap: { marginLeft: 10 },
+  mapRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   savePill: {
     alignSelf: 'flex-start',
     backgroundColor: colors.statusSuccessBg,
