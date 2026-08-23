@@ -146,10 +146,6 @@ export async function fetchSlots(kitchenSlug: string): Promise<Slot[]> {
   if (kErr) throw kErr;
   if (!kitchen) return [];
 
-  // Slots are defined once as templates; make sure today's real rows exist
-  // before reading them (creates them from the active templates, idempotent).
-  await db.rpc('ensure_todays_slots', { p_kitchen_id: kitchen.id });
-
   const { data, error } = await db
     .from('pickup_slots')
     .select('digits, time_label, capacity, used')
@@ -1031,28 +1027,24 @@ export async function fetchOrdersInRange(
 
 /* ------------------------------------------------------- pickup slots ---- */
 
-/** Add a pickup time. It's saved as a persistent template, so it appears every
- * day until the owner removes it. Capacity is effectively unlimited at the slot
- * level (per-item units gate ordering), so it's set high when materialised. */
+/** Add a pickup time for today. Capacity is effectively unlimited at the slot
+ * level now — per-item units gate ordering — so it's set high. */
 export async function addSlotRemote(kitchenSlug: string, time: string): Promise<boolean> {
   try {
     const db = requireSupabase();
     const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
     if (!kitchen) throw new Error('Kitchen not found');
-    const kitchenId = (kitchen as { id: string }).id;
     const digits = time.replace(/\D/g, '').padEnd(3, '0').slice(0, 4);
     if (!/^\d{3,4}$/.test(digits)) throw new Error('Bad time');
-    // Upsert the template: re-adding a previously removed time reactivates it
-    // and refreshes the label.
-    const { error } = await db
-      .from('slot_templates')
-      .upsert(
-        { kitchen_id: kitchenId, time_label: time, digits, active: true },
-        { onConflict: 'kitchen_id,digits' },
-      );
-    if (error) throw error;
-    // Make it show today as well, not just from tomorrow.
-    await db.rpc('ensure_todays_slots', { p_kitchen_id: kitchenId });
+    const { error } = await db.from('pickup_slots').insert({
+      kitchen_id: (kitchen as { id: string }).id,
+      time_label: time,
+      digits,
+      capacity: 9999,
+      used: 0,
+    });
+    // A duplicate (same time already exists today) is fine.
+    if (error && error.code !== '23505') throw error;
     return true;
   } catch (e) {
     console.warn('[spice-route] addSlotRemote failed', e);
@@ -1060,31 +1052,19 @@ export async function addSlotRemote(kitchenSlug: string, time: string): Promise<
   }
 }
 
-/** Remove a pickup time. Deactivates the template (so it stops appearing) and
- * drops today's row if no one has ordered into it yet; a row that already has
- * orders is kept for today so the kitchen still sees those pickups. */
+/** Remove today's pickup time. Fails (returns false) if orders already use it. */
 export async function removeSlotRemote(kitchenSlug: string, digits: string): Promise<boolean> {
   try {
     const db = requireSupabase();
     const { data: kitchen } = await db.from('kitchens').select('id').eq('slug', kitchenSlug).maybeSingle();
     if (!kitchen) throw new Error('Kitchen not found');
-    const kitchenId = (kitchen as { id: string }).id;
-
-    const { error: tErr } = await db
-      .from('slot_templates')
-      .update({ active: false })
-      .eq('kitchen_id', kitchenId)
-      .eq('digits', digits);
-    if (tErr) throw tErr;
-
-    // Remove today's materialised row only when it's still empty.
-    await db
+    const { error } = await db
       .from('pickup_slots')
       .delete()
-      .eq('kitchen_id', kitchenId)
+      .eq('kitchen_id', (kitchen as { id: string }).id)
       .eq('digits', digits)
-      .eq('service_date', new Date().toISOString().slice(0, 10))
-      .eq('used', 0);
+      .eq('service_date', new Date().toISOString().slice(0, 10));
+    if (error) throw error;
     return true;
   } catch (e) {
     console.warn('[spice-route] removeSlotRemote failed', e);
