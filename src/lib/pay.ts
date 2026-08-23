@@ -33,19 +33,39 @@ export type RazorpayOrder = {
   keyId: string;
 };
 
+export type CreateOrderError = { error: string };
+
 /** Ask the server to open a Razorpay order for one of our orders. */
-export async function createRazorpayOrder(orderId: string): Promise<RazorpayOrder | null> {
+export async function createRazorpayOrder(
+  orderId: string,
+): Promise<RazorpayOrder | CreateOrderError> {
   try {
-    if (!supabase) return null;
+    if (!supabase) return { error: 'Not connected to the server.' };
     const { data, error } = await supabase.functions.invoke('razorpay-create-order', {
       body: { orderId },
     });
-    if (error) throw error;
-    if (!data?.razorpayOrderId) throw new Error(data?.error ?? 'No Razorpay order returned');
+    if (error) {
+      // Supabase wraps a non-2xx response in FunctionsHttpError; the real
+      // message from the edge function is in the response body, not error.message.
+      let detail = error.message || 'Payment service error';
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
+        if (ctx?.json) {
+          const body = await ctx.json();
+          if (body?.error) detail = body.error;
+        }
+      } catch {
+        /* keep the generic message */
+      }
+      console.warn('[spice-route] createRazorpayOrder failed', detail);
+      return { error: detail };
+    }
+    if (!data?.razorpayOrderId) return { error: data?.error ?? 'No Razorpay order returned' };
     return data as RazorpayOrder;
   } catch (e) {
+    const msg = (e as { message?: string })?.message ?? 'Could not start payment.';
     console.warn('[spice-route] createRazorpayOrder failed', e);
-    return null;
+    return { error: msg };
   }
 }
 

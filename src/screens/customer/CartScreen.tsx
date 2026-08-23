@@ -158,10 +158,10 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
     const razorpay = await createRazorpayOrder(result.orderId);
     setPlacing(false);
 
-    if (!razorpay) {
-      // Couldn't start payment — release the slot we just reserved.
+    if (!razorpay || 'error' in razorpay) {
+      // Couldn't start payment — release the slot we just reserved and show why.
       await releaseUnpaidOrder(result.orderId);
-      showToast('Could not start payment. Please try again.', 'danger');
+      showToast(razorpay?.error ?? 'Could not start payment. Please try again.', 'danger');
       return;
     }
 
