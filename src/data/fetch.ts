@@ -93,16 +93,34 @@ function toDish(d: DishRow): Dish {
 /** Kitchens the signed-in user may see, with their menus. */
 export async function fetchKitchens(): Promise<Kitchen[]> {
   const db = requireSupabase();
-  const { data, error } = await db
-    .from('kitchens')
-    .select(
-      'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, order_cutoff, map_url, bulk_enabled, bulk_min_units, bulk_note,' +
-        ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units, hidden, reward_eligible )',
-    )
-    .eq('state', 'approved')
-    .order('featured', { ascending: false });
+  const dishCols =
+    ' dishes ( id, name, description, price, old_price, veg, is_combo, available, image_path, images, sort_order, category, bulk_available, bulk_price, daily_units, hidden, reward_eligible )';
+  const baseCols =
+    'id, slug, name, cuisine, area, rating, featured, state, hero_image_path, order_cutoff, bulk_enabled, bulk_min_units, bulk_note,';
 
-  if (error) throw error;
+  // Try WITH map_url, but never let a not-yet-migrated column take the whole
+  // app down: if that column is missing, fall back to the query without it.
+  let data;
+  let hasMap = true;
+  {
+    const withMap = await db
+      .from('kitchens')
+      .select(baseCols + ' map_url,' + dishCols)
+      .eq('state', 'approved')
+      .order('featured', { ascending: false });
+    if (withMap.error) {
+      hasMap = false;
+      const noMap = await db
+        .from('kitchens')
+        .select(baseCols + dishCols)
+        .eq('state', 'approved')
+        .order('featured', { ascending: false });
+      if (noMap.error) throw noMap.error;
+      data = noMap.data;
+    } else {
+      data = withMap.data;
+    }
+  }
 
   type KitchenRow = {
     slug: string; name: string; cuisine: string; area: string;
