@@ -11,7 +11,6 @@
  */
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -27,7 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Clock, MapPin, Search, ShoppingCart, Star, Users } from 'lucide-react-native';
 
-import { IconButton, Media, MenuCard, MenuRow, Button } from '../../components';
+import { IconButton, MapCard, Media, MenuCard, MenuRow, Button } from '../../components';
 import { colors, layout, palette, radius, shadow } from '../../theme';
 import { useType } from '../../theme/useType';
 import { useLanguage } from '../../i18n';
@@ -240,15 +239,12 @@ export function Storefront({
             </View>
 
             {kitchen.mapUrl ? (
-              <Pressable
-                onPress={() => { void Linking.openURL(kitchen.mapUrl as string); }}
-                style={styles.mapRow}
-              >
-                <MapPin size={16} color={colors.textBrand} strokeWidth={2.2} />
-                <Text style={[type.body(13, 700), { color: colors.textBrand }]}>
-                  {' '}View on map
-                </Text>
-              </Pressable>
+              <MapCard
+                mapUrl={kitchen.mapUrl}
+                label={kitchen.distance}
+                title={kitchen.name}
+                style={styles.mapCard}
+              />
             ) : null}
 
             {saving > 0 ? (
@@ -408,7 +404,7 @@ const styles = StyleSheet.create({
   },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   metaGap: { marginLeft: 10 },
-  mapRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  mapCard: { marginTop: 12 },
   savePill: {
     alignSelf: 'flex-start',
     backgroundColor: colors.statusSuccessBg,

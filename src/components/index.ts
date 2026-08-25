@@ -12,6 +12,7 @@ export * from './Dialog';
 export * from './IconButton';
 export * from './Input';
 export * from './LanguagePicker';
+export * from './MapCard';
 export * from './Media';
 export * from './MenuRow';
 export * from './MiniCalendar';
