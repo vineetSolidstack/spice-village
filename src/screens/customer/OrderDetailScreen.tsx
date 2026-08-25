@@ -6,8 +6,8 @@
  * scanning yields "500-07" and the kitchen resolves it server-side.
  */
 import React from 'react';
-import { Share, StyleSheet, Text, View } from 'react-native';
-import { Share2 } from 'lucide-react-native';
+import { Linking, Share, StyleSheet, Text, View } from 'react-native';
+import { MapPin, Share2 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { AppBar, Badge, Button, Screen } from '../../components';
@@ -23,10 +23,12 @@ const QR_SIZE = 180;
 export function OrderDetailScreen({ navigation, route }: OrderStackScreen<'OrderDetail'>) {
   const { t } = useLanguage();
   const type = useType();
-  const { customerOrders } = useStore();
+  const { customerOrders, getKitchen } = useStore();
 
   const order = customerOrders.find((o) => o.ref === route.params.ref);
   if (!order) return null;
+
+  const mapUrl = getKitchen(order.kitchenSlug)?.mapUrl;
 
   const items = order.lines.reduce((sum, l) => sum + l.quantity, 0);
 
@@ -70,6 +72,16 @@ export function OrderDetailScreen({ navigation, route }: OrderStackScreen<'Order
         <Text style={[type.body(13, 600), styles.footer]}>
           {order.kitchenName} · {plural(items, 'item')} · {order.when}
         </Text>
+
+        {mapUrl ? (
+          <Button
+            block
+            icon={<MapPin size={16} color={palette.cream100} strokeWidth={2.2} />}
+            onPress={() => { void Linking.openURL(mapUrl); }}
+          >
+            Get directions to pickup
+          </Button>
+        ) : null}
 
         <Button
           variant="secondary"
