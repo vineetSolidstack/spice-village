@@ -12,7 +12,11 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  // supabase-js in the browser also sends apikey + x-client-info; if these
+  // aren't allowed the CORS preflight fails and the request never reaches us
+  // ("Failed to send a request to the Edge Function").
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-api-version',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
