@@ -104,6 +104,12 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
 
   const onPlace = async () => {
     if (!selected || !cart.kitchenSlug || placing) return;
+    // Guests browse freely; ordering is the point where we ask them to sign in.
+    // Their cart and slot choice are kept, so they land back here afterwards.
+    if (!user) {
+      navigation.navigate('SignIn');
+      return;
+    }
     if (belowLastCallMin) {
       showToast(
         `Last call is a ${LAST_CALL_MIN_ITEMS}-pack — add one more before we close for today.`,
@@ -405,11 +411,13 @@ export function CartScreen({ navigation }: CustomerStackScreen<'Cart'>) {
         >
           {placing
             ? 'Please wait…'
-            : belowLastCallMin
-              ? `Add ${LAST_CALL_MIN_ITEMS - cart.count} more for last call`
-              : paymentsEnabled
-                ? `Pay ${money(payable)} · UPI`
-                : `${t.placeOrder} · ${money(payable)}`}
+            : !user
+              ? `Sign in to order · ${money(payable)}`
+              : belowLastCallMin
+                ? `Add ${LAST_CALL_MIN_ITEMS - cart.count} more for last call`
+                : paymentsEnabled
+                  ? `Pay ${money(payable)} · UPI`
+                  : `${t.placeOrder} · ${money(payable)}`}
         </Button>
       </View>
 

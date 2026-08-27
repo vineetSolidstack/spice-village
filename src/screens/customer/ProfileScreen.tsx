@@ -154,24 +154,31 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
   const myBookings = bookings.filter((b) => b.attendee === (user?.name ?? ''));
   // Partner portals this account is actually entitled to open.
   const availablePortals = PARTNER_ROLES.filter((r) => roles.includes(r));
+  // A signed-out visitor browsing the app — everything account-bound is hidden
+  // and replaced with a single "sign in" call to action.
+  const isGuest = !user && !demo;
 
   const rows = [
-    {
-      icon: <Receipt size={20} color={colors.textBrand} strokeWidth={1.75} />,
-      label: t.bookings,
-      onPress: () => setShowBookings(true),
-    },
-    {
-      icon: <Bell size={20} color={colors.textBrand} strokeWidth={1.75} />,
-      label: t.notif,
-      onPress: () => setShowNotif(true),
-    },
+    ...(isGuest
+      ? []
+      : [
+          {
+            icon: <Receipt size={20} color={colors.textBrand} strokeWidth={1.75} />,
+            label: t.bookings,
+            onPress: () => setShowBookings(true),
+          },
+          {
+            icon: <Bell size={20} color={colors.textBrand} strokeWidth={1.75} />,
+            label: t.notif,
+            onPress: () => setShowNotif(true),
+          },
+        ]),
     {
       icon: <Info size={20} color={colors.textBrand} strokeWidth={1.75} />,
       label: 'About & policies',
       onPress: () => navigation.navigate('About'),
     },
-    ...(demo || roles.includes('kitchen')
+    ...(demo || isGuest || roles.includes('kitchen')
       ? []
       : myApp?.status === 'approved'
         ? [
@@ -220,15 +227,28 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
       <View style={styles.body}>
         <View style={[styles.identity, shadow.card]}>
           <Avatar name={user?.name ?? 'Guest'} size={52} />
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={type.display(17, 700)}>{user?.name ?? 'Guest'}</Text>
             <Text style={[type.body(13, 600), { color: colors.textMuted }]}>
-              {user?.email ?? ''}
+              {isGuest ? 'Browsing as a guest' : user?.email ?? ''}
             </Text>
           </View>
         </View>
 
-        {!demo ? <LoyaltyCard loyalty={loyalty} loading={loyaltyLoading} /> : null}
+        {isGuest ? (
+          <View style={[styles.guestCard, shadow.card]}>
+            <Text style={type.body(14, 700)}>Sign in to order</Text>
+            <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
+              Browse freely — you only need an account to place an order, track it,
+              and collect stamps.
+            </Text>
+            <Button block onPress={() => navigation.navigate('SignIn')}>
+              Sign in or create account
+            </Button>
+          </View>
+        ) : null}
+
+        {!demo && user ? <LoyaltyCard loyalty={loyalty} loading={loyaltyLoading} /> : null}
 
         <View style={[styles.rows, shadow.card]}>
           {rows.map((row, i) => (
@@ -253,7 +273,7 @@ export function ProfileScreen({ navigation }: { navigation: { navigate: (screen:
           <LanguagePicker value={language} onChange={setLanguage} />
         </View>
 
-        {demo ? null : (
+        {demo || isGuest ? null : (
           <Button variant="ghost" block onPress={() => void signOut()}>
             Sign out
           </Button>
@@ -431,6 +451,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
     padding: layout.cardPadding,
+  },
+  guestCard: {
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.lg,
+    padding: layout.cardPadding,
+    gap: 10,
   },
   rows: {
     backgroundColor: colors.surfaceCard,

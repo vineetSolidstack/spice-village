@@ -12,7 +12,6 @@ import { NavigationContainer, type Theme } from '@react-navigation/native';
 
 import { CustomerNavigator } from './CustomerNavigator';
 import { InstructorNavigator, KitchenNavigator, SuperNavigator } from './PortalNavigators';
-import { SignInScreen } from '../screens/auth/SignInScreen';
 import { colors, displayFont, bodyFont } from '../theme';
 import { useAuth } from '../state/auth';
 
@@ -43,15 +42,17 @@ export function RootNavigator() {
         <View style={styles.splash}>
           <ActivityIndicator color={colors.actionPrimary} />
         </View>
-      ) : !user ? (
-        <SignInScreen />
-      ) : role === 'kitchen' ? (
+      ) : user && role === 'kitchen' ? (
         <KitchenNavigator />
-      ) : role === 'instructor' ? (
+      ) : user && role === 'instructor' ? (
         <InstructorNavigator />
-      ) : role === 'super' ? (
+      ) : user && role === 'super' ? (
         <SuperNavigator />
       ) : (
+        // Customers AND signed-out guests browse the same app; sign-in is
+        // requested only when they go to order (or from Profile). Rendering
+        // the same navigator across the guest→customer transition keeps their
+        // place (and cart) instead of remounting.
         <CustomerNavigator />
       )}
     </NavigationContainer>

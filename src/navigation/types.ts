@@ -13,6 +13,7 @@ export type CustomerStackParamList = {
   Cart: undefined;
   Bulk: { slug: string };
   OrderPlaced: { ref: string };
+  SignIn: undefined;
 };
 
 export type CustomerTabParamList = {
@@ -25,6 +26,7 @@ export type CustomerTabParamList = {
 export type ProfileStackParamList = {
   Profile: undefined;
   About: undefined;
+  SignIn: undefined;
 };
 
 export type WorkshopStackParamList = {

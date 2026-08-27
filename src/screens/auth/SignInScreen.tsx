@@ -5,8 +5,9 @@
  * super-admin portal, a kitchen owner lands in their kitchen, everyone else
  * gets the customer app. Nothing here lets a person pick a portal.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import { BrandLogo, Button, Input, Screen } from '../../components';
 import { colors, layout, radius, shadow } from '../../theme';
@@ -17,7 +18,16 @@ type Mode = 'signin' | 'signup';
 
 export function SignInScreen() {
   const type = useType();
-  const { signIn, signUp, signInWithGoogle, googleEnabled } = useAuth();
+  const { signIn, signUp, signInWithGoogle, googleEnabled, user } = useAuth();
+  const navigation = useNavigation();
+  // Presented as a modal over the guest app: once signed in (and still a
+  // customer, so the navigator didn't swap out from under us), close it and
+  // return the person to whatever they were doing — e.g. their cart.
+  const canDismiss = navigation.canGoBack();
+
+  useEffect(() => {
+    if (user && canDismiss) navigation.goBack();
+  }, [user, canDismiss, navigation]);
 
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
@@ -148,6 +158,12 @@ export function SignInScreen() {
               {signingUp ? 'I already have an account' : 'New here? Create an account'}
             </Button>
           </View>
+
+          {canDismiss ? (
+            <Button variant="ghost" block onPress={() => navigation.goBack()}>
+              Maybe later — keep browsing
+            </Button>
+          ) : null}
 
           <Text style={[type.body(12, 600), styles.footnote]}>
             Kitchen owners: create an account, then enter the invite code from your

@@ -16,6 +16,7 @@ import { WorkshopsScreen } from '../screens/customer/WorkshopsScreen';
 import { WorkshopDetailScreen } from '../screens/customer/WorkshopDetailScreen';
 import { ProfileScreen } from '../screens/customer/ProfileScreen';
 import { AboutScreen } from '../screens/customer/AboutScreen';
+import { SignInScreen } from '../screens/auth/SignInScreen';
 import { TabBar } from './TabBar';
 import { useLanguage } from '../i18n';
 import type {
@@ -42,6 +43,7 @@ function HomeStackScreen() {
       <HomeStack.Screen name="Kitchen" component={KitchenScreen} />
       <HomeStack.Screen name="Cart" component={CartScreen} />
       <HomeStack.Screen name="Bulk" component={BulkScreen} />
+      <HomeStack.Screen name="SignIn" component={SignInScreen} options={{ presentation: 'modal' }} />
     </HomeStack.Navigator>
   );
 }
@@ -69,6 +71,7 @@ function ProfileStackScreen() {
     <ProfileStack.Navigator screenOptions={stackOptions}>
       <ProfileStack.Screen name="Profile" component={ProfileScreen} />
       <ProfileStack.Screen name="About" component={AboutScreen} />
+      <ProfileStack.Screen name="SignIn" component={SignInScreen} options={{ presentation: 'modal' }} />
     </ProfileStack.Navigator>
   );
 }
