@@ -8,7 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { Badge, PortalHeader, Screen, SectionLabel, StatCard } from '../../components';
 import { colors, layout } from '../../theme';
 import { useStore } from '../../data/store';
-import { fetchLoyaltyStats } from '../../data/fetch';
+import { fetchLoyaltyStats, fetchVisitStats } from '../../data/fetch';
 import { money } from '../../lib/format';
 import { OrderRow } from './OrderRow';
 import { VerifyQrSheet } from './VerifyQrSheet';
@@ -22,10 +22,12 @@ export function KitchenDashboardScreen() {
     useStore();
   const [verifying, setVerifying] = useState<Order | null>(null);
   const [loyalty, setLoyalty] = useState({ members: 0, rewardsOut: 0 });
+  const [visits, setVisits] = useState({ today: 0, week: 0, total: 0 });
 
   useEffect(() => {
     if (backend !== 'supabase') return;
     void fetchLoyaltyStats(showcaseSlug).then(setLoyalty);
+    void fetchVisitStats(showcaseSlug).then((v) => v && setVisits(v));
   }, [backend, showcaseSlug, kitchenOrders.length]);
 
   const open = kitchenOrders.filter((o) => o.status !== 'Completed');
@@ -61,6 +63,13 @@ export function KitchenDashboardScreen() {
           <StatCard label="Live orders" value={liveOrders.length} />
           <StatCard label="Units left" value={unitsLeft} tone={unitsLeft <= 5 ? colors.statusWarn : undefined} />
           <StatCard label="Next pickup" value={nextPickup} />
+        </View>
+
+        <SectionLabel style={styles.sectionLabel}>Visitors</SectionLabel>
+        <View style={styles.stats}>
+          <StatCard label="Views today" value={visits.today} tone={colors.statusInfo} />
+          <StatCard label="Last 7 days" value={visits.week} />
+          <StatCard label="All time" value={visits.total} />
         </View>
 
         <SectionLabel style={styles.sectionLabel}>Loyalty</SectionLabel>

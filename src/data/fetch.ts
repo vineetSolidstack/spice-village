@@ -1197,3 +1197,32 @@ export async function saveWorkshopRemote(input: {
     return null;
   }
 }
+
+/* ------------------------------------------------------------ analytics -- */
+
+export type VisitStats = { today: number; week: number; total: number };
+
+/** Log one app open. Fire-and-forget; failures are swallowed (never blocks UI). */
+export async function logVisit(kitchenSlug?: string, source?: string): Promise<void> {
+  try {
+    const db = requireSupabase();
+    await db.rpc('log_visit', { p_kitchen: kitchenSlug ?? null, p_source: source ?? null });
+  } catch {
+    /* analytics is best-effort */
+  }
+}
+
+/** Visit counts for the owner Dashboard (today / last 7 days / all time). */
+export async function fetchVisitStats(kitchenSlug?: string): Promise<VisitStats | null> {
+  try {
+    const db = requireSupabase();
+    const { data, error } = await db.rpc('visit_stats', { p_kitchen: kitchenSlug ?? null });
+    if (error) throw error;
+    const r = Array.isArray(data) ? data[0] : data;
+    if (!r) return null;
+    return { today: Number(r.today ?? 0), week: Number(r.week ?? 0), total: Number(r.total ?? 0) };
+  } catch (e) {
+    console.warn('[spice-route] fetchVisitStats failed', e);
+    return null;
+  }
+}

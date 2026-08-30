@@ -1,7 +1,8 @@
 /**
  * Customer app shell — four tabs, each wrapping its own stack.
  */
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ChefHat, Home, Receipt, User } from 'lucide-react-native';
@@ -19,6 +20,9 @@ import { AboutScreen } from '../screens/customer/AboutScreen';
 import { SignInScreen } from '../screens/auth/SignInScreen';
 import { TabBar } from './TabBar';
 import { useLanguage } from '../i18n';
+import { useStore } from '../data/store';
+import { logVisit } from '../data/fetch';
+import { isSupabaseConfigured } from '../data/supabase';
 import type {
   CustomerStackParamList,
   CustomerTabParamList,
@@ -76,8 +80,23 @@ function ProfileStackScreen() {
   );
 }
 
+// Log at most one visit per app load (survives tab switches / re-renders).
+let visitLogged = false;
+
 export function CustomerNavigator() {
   const { t } = useLanguage();
+  const { showcaseSlug } = useStore();
+
+  useEffect(() => {
+    if (visitLogged || !isSupabaseConfigured) return;
+    visitLogged = true;
+    // Pick up a ?from= channel tag on the web (qr / whatsapp / poster …).
+    let source: string | undefined;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      source = new URLSearchParams(window.location.search).get('from') ?? undefined;
+    }
+    void logVisit(showcaseSlug, source);
+  }, [showcaseSlug]);
 
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} />}>
