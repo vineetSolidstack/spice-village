@@ -23,6 +23,11 @@ const head = `
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Nandhan Delight" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <!-- Vercel Web Analytics: counts visitors / page views (privacy-friendly,
+         no cookies). Only records data once "Web Analytics" is enabled for the
+         project in the Vercel dashboard; the script is a harmless no-op until then. -->
+    <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+    <script defer src="/_vercel/insights/script.js"></script>
     <style>
       #ndInstall {
         position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 99999;
