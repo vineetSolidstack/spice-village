@@ -16,6 +16,19 @@ import { useAuth } from '../../state/auth';
 
 type Mode = 'signin' | 'signup';
 
+/** Keep the last 10 digits — canonical for Indian mobile numbers, so "+91 …",
+ * "0…", and spaces all resolve to the same account. */
+function normalizePhone(raw: string): string {
+  const d = raw.replace(/\D/g, '');
+  return d.length > 10 ? d.slice(-10) : d;
+}
+
+/** Phone sign-in with no OTP: the number becomes a hidden email for Supabase's
+ * password auth. Customers only ever see "phone number". */
+function phoneToEmail(phone: string): string {
+  return `${normalizePhone(phone)}@phone.nandhandelight.in`;
+}
+
 export function SignInScreen() {
   const type = useType();
   const { signIn, signUp, signInWithGoogle, googleEnabled, user } = useAuth();
@@ -31,15 +44,20 @@ export function SignInScreen() {
 
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const signingUp = mode === 'signup';
-  const valid =
-    email.trim().includes('@') && password.length >= 6 && (!signingUp || name.trim().length > 0);
+  // Customers type a phone number; owners/admins can still type their email in
+  // the same box (so nobody who signed up by email is locked out).
+  const typedEmail = phone.includes('@');
+  const idValid = typedEmail
+    ? phone.includes('@') && phone.includes('.')
+    : normalizePhone(phone).length === 10;
+  const valid = idValid && password.length >= 6 && (!signingUp || name.trim().length > 0);
 
   const onSubmit = async () => {
     if (!valid || busy) return;
@@ -47,9 +65,10 @@ export function SignInScreen() {
     setError(null);
     setNotice(null);
 
+    const authEmail = typedEmail ? phone.trim().toLowerCase() : phoneToEmail(phone);
     const result = signingUp
-      ? await signUp(email, password, name)
-      : await signIn(email, password);
+      ? await signUp(authEmail, password, name)
+      : await signIn(authEmail, password);
 
     setBusy(false);
 
@@ -58,8 +77,9 @@ export function SignInScreen() {
       return;
     }
     if (signingUp) {
-      // Projects with email confirmation on won't return a session yet.
-      setNotice('Account created. If your project requires email confirmation, confirm it and sign in.');
+      // With auto-confirm on, sign-up returns a session and the auth listener
+      // signs them straight in; this only shows if that hasn't happened yet.
+      setNotice('Account created. Sign in with your phone number and password.');
       setMode('signin');
     }
     // On success the auth listener swaps the navigator; nothing to do here.
@@ -95,13 +115,13 @@ export function SignInScreen() {
             ) : null}
 
             <Input
-              label="Email"
-              placeholder="you@example.com"
-              value={email}
-              onChangeText={setEmail}
+              label="Phone number"
+              placeholder="98765 43210"
+              value={phone}
+              onChangeText={setPhone}
               autoCapitalize="none"
               autoCorrect={false}
-              keyboardType="email-address"
+              keyboardType="default"
             />
 
             <Input
