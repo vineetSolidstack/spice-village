@@ -24,7 +24,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Clock, MapPin, Search, ShoppingCart, Star, Users } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Clock, MapPin, Search, ShoppingCart, Star, Users } from 'lucide-react-native';
 
 import { IconButton, MapCard, Media, MenuCard, MenuRow, Button } from '../../components';
 import { colors, layout, palette, radius, shadow } from '../../theme';
@@ -256,14 +256,32 @@ export function Storefront({
             ) : null}
 
             {onOpenBulk ? (
-              <Pressable onPress={onOpenBulk} style={styles.bulkRow}>
-                <Users size={18} color={colors.textBrand} strokeWidth={2} />
-                <View style={styles.bulkText}>
-                  <Text style={type.body(14, 700)}>Feeding a crowd?</Text>
-                  <Text style={[type.body(12, 600), { color: colors.textMuted }]}>
-                    Request a bulk quote for parties and offices
-                  </Text>
-                </View>
+              <Pressable
+                onPress={onOpenBulk}
+                style={({ pressed }) => [styles.bulkCardWrap, pressed && styles.bulkPressed]}
+              >
+                <LinearGradient
+                  colors={[palette.paprika600, palette.paprika500]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.bulkCard}
+                >
+                  <View style={styles.bulkBadge}>
+                    <Users size={22} color={palette.cream100} strokeWidth={2.2} />
+                  </View>
+                  <View style={styles.bulkText}>
+                    <Text style={[type.display(17, 800), { color: palette.cream100 }]}>
+                      Feeding a crowd?
+                    </Text>
+                    <Text style={[type.body(12.5, 600), { color: palette.cream100, opacity: 0.92 }]}>
+                      Party trays & office lunches — get a quick quote
+                    </Text>
+                  </View>
+                  <View style={styles.bulkCta}>
+                    <Text style={[type.body(13, 800), { color: palette.paprika700 }]}>Quote</Text>
+                    <ArrowRight size={15} color={palette.paprika700} strokeWidth={2.6} />
+                  </View>
+                </LinearGradient>
               </Pressable>
             ) : null}
 
@@ -413,16 +431,40 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginTop: 6,
   },
-  bulkRow: {
+  bulkCardWrap: {
+    marginTop: 14,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    ...shadow.card,
+  },
+  bulkPressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
+  bulkCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.surfaceBrandSoft,
-    borderRadius: radius.md,
-    padding: 14,
-    marginTop: 10,
+    gap: 14,
+    padding: 16,
+  },
+  bulkBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: palette.turmeric500,
   },
   bulkText: { flex: 1 },
+  bulkCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: palette.cream100,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 13,
+  },
   popular: { marginTop: 18 },
   popularTitle: { marginBottom: 12 },
   popularRow: { gap: 12, paddingRight: layout.gutter },
